@@ -512,23 +512,23 @@ function renderDetails(data) {
 
         document.getElementById('det-smr-metrics').innerHTML = `
         <div class="metric-card" style="cursor: pointer;" onclick="window.showIndicatorTrend('age_moyen', 'Âge Moyen', 'ans')">
-            <div class="metric-label">Âge Moyen <span style="font-size:0.7em; color: var(--text-muted);">(év. ▶)</span></div>
+            <div class="metric-label">Âge Moyen <span style="font-size:0.7em; color: var(--text-muted);">(évolution ▶)</span></div>
             <div class="metric-value">${compare(avgAge, official.age_moyen, " ans").text}</div>
         </div>
         <div class="metric-card" style="cursor: pointer;" onclick="window.showIndicatorTrend('sexe_ratio', 'Sexe Ratio', '%H')">
-            <div class="metric-label">Sexe Ratio <span style="font-size:0.7em; color: var(--text-muted);">(év. ▶)</span></div>
+            <div class="metric-label">Sexe Ratio <span style="font-size:0.7em; color: var(--text-muted);">(évolution ▶)</span></div>
             <div class="metric-value">${compare(avgSexe, official.sexe_ratio, "% H").text}</div>
         </div>
         <div class="metric-card" style="cursor: pointer;" onclick="window.showIndicatorTrend('avq_physique', 'AVQ Physique', '/4')">
-            <div class="metric-label">AVQ Physique <span style="font-size:0.7em; color: var(--text-muted);">(év. ▶)</span></div>
+            <div class="metric-label">AVQ Physique <span style="font-size:0.7em; color: var(--text-muted);">(évolution ▶)</span></div>
             <div class="metric-value">${compare(avgAVQP, official.avq_physique, " /4").text}</div>
         </div>
         <div class="metric-card" style="cursor: pointer;" onclick="window.showIndicatorTrend('avq_relationnel', 'AVQ Relationnel', '/4')">
-            <div class="metric-label">AVQ Relationnel <span style="font-size:0.7em; color: var(--text-muted);">(év. ▶)</span></div>
+            <div class="metric-label">AVQ Relationnel <span style="font-size:0.7em; color: var(--text-muted);">(évolution ▶)</span></div>
             <div class="metric-value">${compare(avgAVQR, official.avq_relationnel, " /4").text}</div>
         </div>
         <div class="metric-card" style="cursor: pointer;" onclick="window.showIndicatorTrend('nb_actes_csarr', 'Actes CSARR', '/j.')">
-            <div class="metric-label">Actes CSARR <span style="font-size:0.7em; color: var(--text-muted);">(év. ▶)</span></div>
+            <div class="metric-label">Actes CSARR <span style="font-size:0.7em; color: var(--text-muted);">(évolution ▶)</span></div>
             <div class="metric-value">${compare(avgCSARR, official.nb_actes_csarr, " /j.").text}</div>
         </div>
         `;
@@ -643,11 +643,6 @@ function renderDetails(data) {
             breakdownHtml += '<p style="font-size: 0.8rem; color: var(--text-muted);">Aucune donnée détaillée disponible.</p>';
         }
         breakdownHtml += '</div>';
-
-        document.getElementById('det-raw').innerHTML = `
-            <p style="margin-bottom: 1rem;">Consolidation effectuée sur les données PMSI-SMR.</p>
-            ${breakdownHtml}
-        `;
     } else {
         document.getElementById('det-raw').textContent = "Aucun historique disponible.";
         document.getElementById('det-metrics').innerHTML = "";
