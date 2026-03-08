@@ -9,7 +9,9 @@ let chart = null;
 async function init() {
     try {
         const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const dataBaseUrl = '../data';
+        const dataBaseUrl = isLocal
+            ? '../data'
+            : 'https://raw.githubusercontent.com/opendatasante/openScanSanteSMR-web/main/data';
 
         console.log('[SMR] hostname:', window.location.hostname);
         console.log('[SMR] isLocal:', isLocal);
