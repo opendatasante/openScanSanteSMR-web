@@ -1,0 +1,10 @@
+{
+  "annee": "annees",
+  "tgeo": "types_geo",
+  "codegeo": "departements / regions",
+  "SePP": "categories_etablissements",
+  "SeTailEt": "tailles_etablissements",
+  "catmaj": "categories_majeures / Libellé de la catégorie dans la hiérarchie",
+  "gn": "groupes_nosologiques / Sous-liste dans la hiérarchie",
+  "gpmedeco": "groupes_medico_economiques / Sous-liste dans la hiérarchie"
+}
