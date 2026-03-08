@@ -8,8 +8,13 @@ let chart = null;
 
 async function init() {
     try {
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const dataBaseUrl = isLocal
+            ? '../data'
+            : 'https://raw.githubusercontent.com/sebastiencys/openScanSanteSMR-data/main/data';
+
         // 1. Charger l'index (Mapping Finess -> Géo)
-        const resp = await fetch('../data/search/finess_geo_mapping.json');
+        const resp = await fetch(`${dataBaseUrl}/search/finess_geo_mapping.json`);
         if (!resp.ok) throw new Error("Index global introuvable. Assurez-vous d'avoir lancé l'export.");
         mapping = await resp.json();
 
@@ -17,7 +22,7 @@ async function init() {
 
         // 3. Charger les libellés des catégories majeures, GN et GME
         try {
-            const respOptions = await fetch('../data/search/options.json');
+            const respOptions = await fetch(`${dataBaseUrl}/search/options.json`);
             if (respOptions.ok) {
                 const options = await respOptions.json();
                 (options.categories_majeures || []).forEach(cat => {
