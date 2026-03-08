@@ -644,10 +644,7 @@ function renderDetails(data) {
         }
         breakdownHtml += '</div>';
 
-        document.getElementById('det-raw').innerHTML = `
-            <p style="margin-bottom: 1rem;">Consolidation effectuée sur les données ScanSanté.</p>
-            ${breakdownHtml}
-        `;
+        document.getElementById('det-raw').innerHTML = breakdownHtml;
     } else {
         document.getElementById('det-raw').textContent = "Aucun historique disponible.";
         document.getElementById('det-metrics').innerHTML = "";
