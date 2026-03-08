@@ -13,10 +13,18 @@ async function init() {
             ? '../data'
             : 'https://raw.githubusercontent.com/sebastiencys/openScanSanteSMR-data/main/data';
 
+        console.log('[SMR] hostname:', window.location.hostname);
+        console.log('[SMR] isLocal:', isLocal);
+        console.log('[SMR] dataBaseUrl:', dataBaseUrl);
+
         // 1. Charger l'index (Mapping Finess -> Géo)
-        const resp = await fetch(`${dataBaseUrl}/search/finess_geo_mapping.json`);
-        if (!resp.ok) throw new Error("Index global introuvable. Assurez-vous d'avoir lancé l'export.");
+        const mappingUrl = `${dataBaseUrl}/search/finess_geo_mapping.json`;
+        console.log('[SMR] Fetching mapping from:', mappingUrl);
+        const resp = await fetch(mappingUrl);
+        console.log('[SMR] Mapping response status:', resp.status, resp.ok);
+        if (!resp.ok) throw new Error(`Index global introuvable (HTTP ${resp.status}). URL: ${mappingUrl}`);
         mapping = await resp.json();
+        console.log('[SMR] Mapping loaded, nb établissements:', Object.keys(mapping).length);
 
         // Les données "Total" officielles sont désormais incluses dans chaque fichier établissement
 
