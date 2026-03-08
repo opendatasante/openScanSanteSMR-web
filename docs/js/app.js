@@ -643,6 +643,11 @@ function renderDetails(data) {
             breakdownHtml += '<p style="font-size: 0.8rem; color: var(--text-muted);">Aucune donnée détaillée disponible.</p>';
         }
         breakdownHtml += '</div>';
+
+        document.getElementById('det-raw').innerHTML = `
+            <p style="margin-bottom: 1rem;">Consolidation effectuée sur les données ScanSanté.</p>
+            ${breakdownHtml}
+        `;
     } else {
         document.getElementById('det-raw').textContent = "Aucun historique disponible.";
         document.getElementById('det-metrics').innerHTML = "";
