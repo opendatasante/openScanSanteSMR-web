@@ -8340,7 +8340,7 @@
     "reg_name": "NOUVELLE-AQUITAINE",
     "dep_code": "23",
     "dep_name": "CREUSE",
-    "raison_sociale": "CENTRE MÉDICAL NATIONAL STE FEYRE",
+    "raison_sociale": "ÉTABLISSEMENT DE SANTÉ DE SAINTE FEYRE",
     "categorie": "PSPH/EBNL"
   },
   "230780512": {
@@ -12518,5 +12518,30 @@
     "dep_name": "VAUCLUSE",
     "raison_sociale": "CLINIQUE KORIAN MONT VENTOUX",
     "categorie": "Privé"
+  },
+  "540028370": {
+    "raison_sociale": "POLE MEDICAL PASTEUR KLEBER",
+    "categorie": "Privé",
+    "reg_code": "44",
+    "reg_name": "GRAND EST",
+    "dep_code": "54",
+    "dep_name": "MEURTHE-ET-MOSELLE"
+  },
+  "750071185": {
+    "raison_sociale": "CLINALLIANCE PARIS 18",
+    "categorie": "Privé",
+    "reg_code": "11",
+    "reg_name": "ILE-DE-FRANCE",
+    "dep_code": "75",
+    "dep_name": "PARIS"
+  },
+  "640781175": {
+    "raison_sociale": "COLONIE SANITAIRE DES PEP",
+    "categorie": "PSPH/EBNL",
+    "reg_code": "75",
+    "reg_name": "NOUVELLE-AQUITAINE",
+    "dep_code": "64",
+    "dep_name": "PYRÉNÉES-ATLANTIQUES"
   }
 }
+
