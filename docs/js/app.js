@@ -260,15 +260,9 @@ async function loadEstablishment(finess) {
         }
 
         // 2. Charger tous les fichiers en parallèle
-        // On récupère le contenu brut via l'URL 'download_url' fournie par GitHub
-        // const dataPromises = historyFiles.map(file => fetch(file.download_url).then(r => r.json()));
-        const dataPromises = historyFiles.map(file => {
-            const cdnUrl = file.download_url
-                .replace("https://raw.githubusercontent.com/", "https://cdn.jsdelivr.net/gh/")
-                .replace("/main/", "/"); // jsDelivr n'utilise pas /main/
-
-            return fetch(cdnUrl).then(r => r.json());
-        });
+        const dataPromises = historyFiles.map(path =>
+            fetch(CDN_PREFIX + path).then(r => r.json())
+        );
 
         const allHistoricalData = await Promise.all(dataPromises);
 
@@ -304,24 +298,21 @@ async function loadEstablishment(finess) {
     }
 }
 
-async function fetchHistory(finess) {
-    const repo = "sebastiencys/openScanSanteSMR-data";
-    const path = `data/restitutions/etablissements/${finess}`;
-    const url = `https://api.github.com/repos/${repo}/contents/${path}`;
+const CDN_PREFIX = "https://cdn.jsdelivr.net/gh/sebastiencys/openScanSanteSMR-data/";
+const INDEX_URL = CDN_PREFIX + "data-index.json";
 
-    const resp = await fetch(url);
-    if (!resp.ok) {
-        if (resp.status === 404) return [];
-        throw new Error(`GitHub API Error: ${resp.statusText}`);
+async function fetchHistory(finess) {
+    // 1. Charger l’index statique
+    const index = await fetch(INDEX_URL).then(r => r.json());
+
+    // 2. Vérifier si le FINESS existe dans l’index
+    const files = index[finess];
+    if (!files || files.length === 0) {
+        return []; // aucun historique
     }
 
-    const files = await resp.json();
-
-    // Filtrer : uniquement les JSON, exclure 'latest.json'
-    // Trier par nom (ordre alphabétique = chronologique car format ISO ou YYYY-MM-DD)
-    return files
-        .filter(f => f.name.endsWith('.json') && f.name !== 'latest.json')
-        .sort((a, b) => a.name.localeCompare(b.name));
+    // 3. Retourner la liste des fichiers (déjà triés par ton script)
+    return files;
 }
 
 function renderDetails(data) {
