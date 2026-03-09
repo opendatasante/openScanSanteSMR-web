@@ -12,7 +12,6 @@ async function init() {
         const dataBaseUrl = isLocal
             ? '../data'
             : 'https://cdn.jsdelivr.net/gh/opendatasante/openScanSanteSMR-web@main/data';
-        // : 'https://raw.githubusercontent.com/opendatasante/openScanSanteSMR-web/main/data';
 
         console.log('[SMR] hostname:', window.location.hostname);
         console.log('[SMR] isLocal:', isLocal);
@@ -262,7 +261,15 @@ async function loadEstablishment(finess) {
 
         // 2. Charger tous les fichiers en parallèle
         // On récupère le contenu brut via l'URL 'download_url' fournie par GitHub
-        const dataPromises = historyFiles.map(file => fetch(file.download_url).then(r => r.json()));
+        // const dataPromises = historyFiles.map(file => fetch(file.download_url).then(r => r.json()));
+        const dataPromises = historyFiles.map(file => {
+            const cdnUrl = file.download_url
+                .replace("https://raw.githubusercontent.com/", "https://cdn.jsdelivr.net/gh/")
+                .replace("/main/", "/"); // jsDelivr n'utilise pas /main/
+
+            return fetch(cdnUrl).then(r => r.json());
+        });
+
         const allHistoricalData = await Promise.all(dataPromises);
 
         // 3. Fusionner les données (par ordre chronologique pour que le plus récent écrase l'ancien)
