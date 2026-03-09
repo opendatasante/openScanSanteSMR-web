@@ -245,7 +245,7 @@ async function loadEstablishment(finess) {
         let historyFiles = [];
 
         if (isLocal) {
-            // En local, on teste avec latest.json directement au lieu de requêter l'API GitHub
+            // En local, on teste avec latest.json directement
             historyFiles = [{
                 name: 'latest.json',
                 download_url: `../data/restitutions/etablissements/${finess}/latest.json?t=${new Date().getTime()}`
@@ -300,6 +300,7 @@ async function loadEstablishment(finess) {
 
 const CDN_PREFIX = "https://cdn.jsdelivr.net/gh/sebastiencys/openScanSanteSMR-data/";
 const INDEX_URL = CDN_PREFIX + "data-index.json";
+const RELEASE_URL = CDN_PREFIX + "release-latest.json";
 
 async function fetchHistory(finess) {
     // 1. Charger l’index statique
@@ -650,11 +651,14 @@ function renderDetails(data) {
         document.getElementById('det-smr-metrics').innerHTML = "";
     }
 }
+async function fetchLatestRelease() {
+    return release;
+}
 
 async function fetchLatestUpdateDate() {
     try {
-        const resp = await fetch('https://api.github.com/repos/sebastiencys/openScanSanteSMR-data/releases/latest');
-        if (!resp.ok) throw new Error("GitHub API Error");
+        const resp = await fetch(RELEASE_URL);
+        if (!resp.ok) throw new Error("Failed to retrieve release data");
         const data = await resp.json();
         const dateStr = data.published_at.split('T')[0];
         document.getElementById('update-badge').innerHTML = `Dernière mise à jour : ${dateStr}`;
