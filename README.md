@@ -1,5 +1,3 @@
-`
-
 ## 🌐 Interface web de visualisation
 Lancez le serveur local :
 ```bash
