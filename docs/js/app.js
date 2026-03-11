@@ -84,8 +84,7 @@ async function init() {
 
         table.on('draw', function () {
             updateGlobalStats();
-            refreshViews();    // carte toujours à jour
-            }
+            refreshViews();
         });
 
 
