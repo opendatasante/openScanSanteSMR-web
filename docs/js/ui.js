@@ -1,158 +1,10 @@
-let mapping = {};
-let officialTotals = {};
-let catMajLabels = {};
-let gnLabels = {};
-let gmeLabels = {};
-let table = null;
-let chart = null;
-let map = null;
-let markersLayer = null;
-let legendControl = null;
-let currentView = "list";
+// js/ui.js
+import { state, config } from './state.js';
+import { fetchHistory } from './api.js';
+import { refreshViews } from './map.js';
 
-
-async function init() {
-    try {
-        const dataBaseUrl = 'https://cdn.jsdelivr.net/gh/opendatasante/openScanSanteSMR-web@main/data';
-        const datacompleteBaseUrl = 'https://cdn.jsdelivr.net/gh/sebastiencys/openScanSanteSMR-data@main/data';
-
-        console.log('[SMR] hostname:', window.location.hostname);
-        console.log('[SMR] dataBaseUrl:', dataBaseUrl);
-
-        // 1. Charger l'index (Mapping Finess -> Géo)
-        const mappingUrl = `${dataBaseUrl}/search/finess_geo_mapping_enrichis.json`;
-        console.log('[SMR] Fetching mapping from:', mappingUrl);
-        const resp = await fetch(mappingUrl);
-        console.log('[SMR] Mapping response status:', resp.status, resp.ok);
-        if (!resp.ok) throw new Error(`Index global introuvable (HTTP ${resp.status}). URL: ${mappingUrl}`);
-        mapping = await resp.json();
-        console.log('[SMR] Mapping loaded, nb établissements:', Object.keys(mapping).length);
-
-        // On charge les "Total" officielles
-        await loadGlobalTotals();
-
-        // 3. Charger les libellés des catégories majeures, GN et GME
-        try {
-            const respOptions = await fetch(`${dataBaseUrl}/search/options.json`);
-            if (respOptions.ok) {
-                const options = await respOptions.json();
-                (options.categories_majeures || []).forEach(cat => {
-                    catMajLabels[cat.value] = cat.text;
-                    (cat.groupes_nosologiques || []).forEach(gn => {
-                        gnLabels[gn.value] = gn.text;
-                        (gn.groupes_medico_economiques || []).forEach(gme => {
-                            gmeLabels[gme.value] = gme.text;
-                        });
-                    });
-                });
-            }
-        } catch (e) {
-            console.warn("Impossible de charger les libellés des catégories:", e);
-        }
-
-        // 4. Fetch Latest Update Date from GitHub
-        fetchLatestUpdateDate();
-
-        // 3. Populate Filters
-        populateFilters();
-
-        // 3. Calculer les statistiques globales pour le dashboard
-        updateGlobalStats();
-
-        // 4. Préparer les données pour DataTables
-        const tableData = Object.entries(mapping).map(([finess, info]) => [
-            finess,
-            info.raison_sociale,
-            info.dep_name ? `${info.dep_code} - ${info.dep_name}` : info.dep_code,
-            info.reg_name,
-            info.categorie || 'Secteur Inconnu'
-        ]);
-
-        // 5. Initialisation DataTables
-        table = $('#main-table').DataTable({
-            data: tableData,
-            responsive: true,
-            order: [[1, 'asc']], // Tri par nom par défaut
-            language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json',
-                search: "_INPUT_",
-                searchPlaceholder: "Rechercher un établissement..."
-            },
-            pageLength: 15,
-            dom: '<"top"f>rt<"bottom"lip><"clear">'
-        });
-
-        // 6. Événement clic sur ligne
-        $('#main-table tbody').on('click', 'tr', function () {
-            const rowData = table.row(this).data();
-            if (rowData) loadEstablishment(rowData[0]);
-        });
-
-        // 7. Event Listeners for Filters
-        $('.filter-select').on('change', function (e) {
-            applyFilters(e);
-        });
-
-    } catch (err) {
-        console.error(err);
-        $('header').after(`<div style="background: rgba(239, 68, 68, 0.1); color: #f87171; padding: 1rem; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.2); margin-bottom: 2rem;">
-        <strong>Erreur de chargement :</strong> ${err.message}<br>
-        <small>Vérifiez que le fichier <code>finess_geo_mapping.json</code> existe dans <code>data/search/</code>.</small>
-    </div>`);
-    }
-
-    document.getElementById("btn-list").onclick = () => {
-        currentView = "list";
-
-        document.getElementById("btn-list").classList.add("active");
-        document.getElementById("btn-map").classList.remove("active");
-
-        document.getElementById("main-table_wrapper").style.display = "block";
-        document.getElementById("map-view").style.display = "none";
-
-        refreshViews();
-    };
-
-    document.getElementById("btn-map").onclick = () => {
-        currentView = "map";
-
-        document.getElementById("btn-map").classList.add("active");
-        document.getElementById("btn-list").classList.remove("active");
-
-        document.getElementById("main-table_wrapper").style.display = "none";
-        document.getElementById("map-view").style.display = "block";
-
-        initMap();
-
-        refreshViews();
-    };
-
-
-}
-
-async function loadGlobalTotals() {
-    try {
-        const url = "https://cdn.jsdelivr.net/gh/sebastiencys/openScanSanteSMR-data/data/restitutions/total/latest.json";
-        const resp = await fetch(url);
-        const json = await resp.json();
-
-        json.data.forEach(row => {
-            const f = row.finess;
-            if (mapping[f]) {
-                mapping[f].total_journees = parseInt(row.nb_journees_total) || 0;
-                mapping[f].total_hc = parseInt(row.nb_journees_hc) || 0;
-                mapping[f].total_hp = parseInt(row.nb_journees_hp) || 0;
-            }
-        });
-
-        console.log("[SMR] Totaux globaux intégrés dans mapping");
-    } catch (e) {
-        console.warn("Impossible de charger les totaux globaux :", e);
-    }
-}
-
-function populateFilters() {
-    const sites = Object.values(mapping);
+export function populateFilters() {
+    const sites = Object.values(state.mapping);
 
     // Unique Regions
     const regions = [...new Set(sites.map(s => s.reg_name).filter(Boolean))].sort();
@@ -178,268 +30,50 @@ function populateFilters() {
     updateDeptFilter();
 }
 
-function updateDeptFilter() {
-    const selectedRegion = document.getElementById('filter-region').value;
-    const sites = Object.values(mapping);
-    const deptSelect = document.getElementById('filter-dept');
-
-    // Clear existing options except the first one
-    deptSelect.innerHTML = '<option value="">Tous les départements</option>';
-
-    let filteredDepts = sites;
-    if (selectedRegion) {
-        filteredDepts = sites.filter(s => s.reg_name === selectedRegion);
-    }
-
-    const depts = [...new Set(filteredDepts.map(s => s.dep_name ? `${s.dep_code} - ${s.dep_name}` : s.dep_code))].sort();
-
-    depts.forEach(dept => {
-        const opt = document.createElement('option');
-        opt.value = dept;
-        opt.textContent = dept;
-        deptSelect.appendChild(opt);
-    });
-}
-
-function applyFilters(event) {
+export function applyFilters(event) {
+    // 1. On lit d'abord la région et le secteur
     const regVal = document.getElementById('filter-region').value;
-    const deptVal = document.getElementById('filter-dept').value;
     const sectorVal = document.getElementById('filter-sector').value;
 
-    // Handle dependency: if region changes, update depts
+    // 2. SI la région vient de changer, on met à jour la liste des départements
+    // (ce qui va réinitialiser le <select> sur "Tous les départements")
     if (event && event.target && event.target.id === 'filter-region') {
         updateDeptFilter();
     }
 
-    // Apply filtering to DataTables
-    // Col 2: Dept (index 2)
-    // Col 3: Region (index 3)
-    // Col 4: Categorie (index 4)
+    // 3. SEULEMENT MAINTENANT on lit la valeur du département !
+    // Comme ça, si la région a changé, deptVal vaudra bien "" (vide).
+    const deptVal = document.getElementById('filter-dept').value;
 
-    table.column(3).search(regVal);
+    // 4. On applique les filtres
+    state.table.column(3).search(regVal);
 
     if (deptVal) {
-        // Use exact match for dept since we have "01 - AIN" and might have "01 - AIN..."
-        table.column(2).search('^' + deptVal.replace(/-/g, '\\-') + '$', true, false);
+        state.table.column(2).search('^' + deptVal.replace(/-/g, '\\-') + '$', true, false);
     } else {
-        table.column(2).search('');
+        state.table.column(2).search('');
     }
 
-    table.column(4).search(sectorVal);
+    state.table.column(4).search(sectorVal);
+    state.table.draw();
 
-    table.draw();
-
-    // Update Stats based on filtered data
+    // 5. On met à jour les stats et la carte
     updateGlobalStats();
 
-    if (currentView === "map") {
+    if (state.currentView === "map") {
         refreshViews();
     }
 }
 
-function refreshViews() {
-    const filteredData = table.rows({ filter: 'applied' }).data().toArray();
-    const filteredFiness = filteredData.map(r => r[0]);
-
-    const filteredSites = {};
-    filteredFiness.forEach(f => {
-        filteredSites[f] = mapping[f];
-    });
-
-    if (currentView !== "map") return;
-
-    // Détection des filtres actifs
-    const noFilter =
-        !document.getElementById('filter-region').value &&
-        !document.getElementById('filter-dept').value &&
-        !document.getElementById('filter-sector').value;
-
-    // Départements présents dans les données filtrées
-    const filteredDepts = new Set(
-        filteredFiness.map(f => String(mapping[f].dep_code))
-    );
-
-    const deptCount = filteredDepts.size;
-
-    // Toujours mettre à jour les marqueurs
-    updateMapMarkers(filteredSites);
-
-    // Cas 1 : aucun filtre → vue France
-    if (noFilter) {
-        map.setView([46.6, 2.5], 6);
-        return;
-    }
-
-    // Cas 2 : un seul département → zoom dessus
-    if (deptCount === 1) {
-        const f = filteredFiness[0];
-        const s = mapping[f];
-
-        const { lat, lon } = projectDOMCoordinates(
-            s.latitude,
-            s.longitude,
-            String(s.dep_code)
-        );
-
-        map.setView([lat, lon], 9);
-        return;
-    }
-
-    // Cas 3 : plusieurs départements → zoom global
-    fitMapToMarkers();
-}
-
-function initMap() {
-    if (map) return;
-
-    map = L.map('map-view', {
-        zoomControl: true,
-        scrollWheelZoom: true
-    }).setView([46.6, 2.5], 6);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap',
-        maxZoom: 18
-    }).addTo(map);
-
-    markersLayer = L.featureGroup().addTo(map);
-    addLegend(map);
-}
-
-function addLegend(map) {
-    if (legendControl) return; // déjà créée → on ne fait rien
-
-    legendControl = L.control({ position: "bottomright" });
-
-    legendControl.onAdd = function () {
-        const div = L.DomUtil.create("div", "info legend");
-
-        const sizes = [
-            { label: "< 10 000 journées", value: 10000 },
-            { label: "10 000 – 30 000", value: 30000 },
-            { label: "> 30 000", value: 50000 }
-        ];
-
-        const sectors = [
-            { label: "Public", color: "#4dabf7" },
-            { label: "Privé", color: "#ff6b6b" }
-        ];
-
-        div.innerHTML = `<div class="legend-title">Volume d'activité</div>`;
-
-        sizes.forEach(s => {
-            const r = Math.sqrt(s.value) * 0.05;
-            const size = r * 2;
-
-            div.innerHTML += `
-                <div class="legend-item">
-                    <svg width="${size}" height="${size}">
-                        <circle cx="${r}" cy="${r}" r="${r}"
-                            fill="#4dabf7" fill-opacity="0.5"
-                            stroke="#4dabf7" stroke-width="1"></circle>
-                    </svg>
-                    <span>${s.label}</span>
-                </div>
-            `;
-        });
-
-        div.innerHTML += `<div class="legend-subtitle">Secteur</div>`;
-
-        sectors.forEach(sec => {
-            div.innerHTML += `
-                <div class="legend-item">
-                    <div style="
-                        width: 14px;
-                        height: 14px;
-                        border-radius: 50%;
-                        background: ${sec.color};
-                        margin-right: 8px;
-                        border: 1px solid #333;
-                    "></div>
-                    <span>${sec.label}</span>
-                </div>
-            `;
-        });
-
-        return div;
-    };
-
-    legendControl.addTo(map);
-}
-
-function projectDOMCoordinates(lat, lon, depCode) {
-    switch (depCode) {
-        case "971": // Guadeloupe
-            return { lat: 43.5, lon: -6.0 };
-        case "972": // Martinique
-            return { lat: 43.0, lon: -6.0 };
-        case "973": // Guyane
-            return { lat: 42.5, lon: -6.0 };
-        case "974": // Réunion
-            return { lat: 43.0, lon: 10.0 };
-        case "976": // Mayotte
-            return { lat: 42.5, lon: 10.0 };
-        default:
-            return { lat, lon };
-    }
-}
-
-function fitMapToMarkers() {
-    const bounds = markersLayer.getBounds();
-    if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30] });
-}
-
-function updateMapMarkers(sites) {
-    markersLayer.clearLayers();
-
-    Object.entries(sites).forEach(([finess, s]) => {
-        // Vérification supplémentaire
-        if (!mapping[finess]) {
-            console.warn("FINESS absent du mapping:", finess);
-            return;
-        }
-
-        if (!s.latitude || !s.longitude) return;
-
-        const total = s.total_journees || 0;
-
-        // Rayon proportionnel (racine carrée pour éviter les cercles énormes)
-        const radius = Math.max(3, Math.sqrt(total) * 0.05);
-
-        // Couleur selon secteur
-        const isPrivate = (s.categorie || "").toUpperCase().includes("PRIV");
-        const color = isPrivate ? "#ff6b6b" : "#4dabf7";
-
-        const { lat, lon } = projectDOMCoordinates(s.latitude, s.longitude, String(s.dep_code));
-        const marker = L.circleMarker([lat, lon], {
-            radius,
-            fillColor: color,
-            color,
-            weight: 1,
-            fillOpacity: 0.55
-        }).addTo(markersLayer);
-
-        marker.on("click", () => loadEstablishment(finess));
-
-        marker.bindPopup(`
-            <strong>${s.raison_sociale}</strong><br>
-            ${s.dep_name} (${s.dep_code})<br>
-            ${s.categorie}<br>
-            <span style="color:#888">Journées : ${total.toLocaleString()}</span>
-        `);
-    });
-}
-
-
-function updateGlobalStats() {
+export function updateGlobalStats() {
     let sites;
-    if (table) {
+    if (state.table) {
         // Get rows that match the current filter correctly
-        const filteredData = table.rows({ filter: 'applied' }).data().toArray();
+        const filteredData = state.table.rows({ filter: 'applied' }).data().toArray();
         const filteredFiness = filteredData.map(r => r[0]); // FINESS is in the first column
-        sites = filteredFiness.map(f => mapping[f]).filter(Boolean); // filter Boolean just in case
+        sites = filteredFiness.map(f => state.mapping[f]).filter(Boolean); // filter Boolean just in case
     } else {
-        sites = Object.values(mapping);
+        sites = Object.values(state.mapping);
     }
 
     const totalSites = sites.length;
@@ -476,18 +110,11 @@ function updateGlobalStats() {
     document.getElementById('stat-prive-percent').textContent = totalSites > 0 ? ((priveCount / totalSites) * 100).toFixed(1) + "% du total" : "0%";
 }
 
-// Close drawer on Escape key
-document.addEventListener('keydown', function (event) {
-    if (event.key === "Escape" || event.key === "Esc") {
-        closeDetails();
-    }
-});
-
-async function loadEstablishment(finess) {
+export async function loadEstablishment(finess) {
 
     // Reset & Show Drawer
     document.getElementById('detail-view').style.display = 'block';
-    document.getElementById('det-name').textContent = mapping[finess].raison_sociale;
+    document.getElementById('det-name').textContent = state.mapping[finess].raison_sociale;
     document.getElementById('det-metrics').innerHTML = '<div style="color: var(--text-muted)">Chargement de l\'historique...</div>';
     document.getElementById('det-raw').textContent = "Accès aux fichiers JSON de l'établissement...";
 
@@ -502,14 +129,14 @@ async function loadEstablishment(finess) {
 
         // 2. Charger tous les fichiers en parallèle
         const dataPromises = historyFiles.map(file => {
-            let url;
-
-            url = CDN_PREFIX + file;
-
-            return fetch(url).then(r => r.json());
+            let url = config.cdnPrefix + file;
+            return fetch(url).then(r => {
+                if (!r.ok) {
+                    throw new Error(`Fichier introuvable ou erreur réseau (${r.status}) pour : ${url}`);
+                }
+                return r.json();
+            });
         });
-
-
 
         const allHistoricalData = await Promise.all(dataPromises);
 
@@ -517,8 +144,8 @@ async function loadEstablishment(finess) {
         // Les fichiers sont déjà triés par nom (date) par fetchHistory
         let mergedData = {
             finess: finess,
-            raison_sociale: mapping[finess].raison_sociale,
-            geo: mapping[finess],
+            raison_sociale: state.mapping[finess].raison_sociale,
+            geo: state.mapping[finess],
             site_updated_at: allHistoricalData[allHistoricalData.length - 1].site_updated_at,
             periodes: {},
             sources: historyFiles.map(f => f.name)
@@ -536,31 +163,283 @@ async function loadEstablishment(finess) {
         renderDetails(mergedData);
 
     } catch (err) {
-        console.error(err);
+        console.error("Erreur lors du chargement de l'établissement :", err);
         document.getElementById('det-raw').innerHTML = `<span style="color: #ef4444">⚠️ ${err.message}</span>`;
-        if (chart) chart.destroy();
+
+        // CORRECTION : On utilise mainChartInstance
+        if (mainChartInstance) mainChartInstance.destroy();
+
         document.getElementById('det-metrics').innerHTML = "";
         document.getElementById('det-smr-metrics').innerHTML = "";
         document.getElementById('det-meta-top').innerHTML = "";
     }
 }
 
-const CDN_PREFIX = "https://cdn.jsdelivr.net/gh/sebastiencys/openScanSanteSMR-data/";
-const INDEX_URL = CDN_PREFIX + "data-index.json";
-const RELEASE_URL = CDN_PREFIX + "release-latest.json";
+function closeDetails() { document.getElementById('detail-view').style.display = 'none'; }
 
-async function fetchHistory(finess) {
-    // 1. Charger l’index statique
-    const index = await fetch(INDEX_URL).then(r => r.json());
+window.closeDetails = closeDetails;
 
-    // 2. Vérifier si le FINESS existe dans l’index
-    const files = index[finess];
-    if (!files || files.length === 0) {
-        return []; // aucun historique
+document.addEventListener('keydown', function (event) {
+    if (event.key === "Escape" || event.key === "Esc") {
+        closeDetails();
+    }
+});
+
+// Variables pour stocker les instances des graphiques afin de pouvoir les détruire avant de les redessiner
+let mainChartInstance = null;
+let profilingChartInstance = null;
+let indicatorTrendChartInstance = null;
+
+// 1. Fonction qui gère les cases à cocher de l'arbre (Catégories > GN > GME)
+window.handleProfileToggle = function (cb) {
+    const isChecked = cb.checked;
+
+    // Propagate downwards (check all children)
+    if (cb.classList.contains('cm-cb') || cb.classList.contains('gn-cb')) {
+        const container = cb.closest('details');
+        if (container) {
+            const descendants = container.querySelectorAll('.profile-cb');
+            descendants.forEach(d => {
+                d.checked = isChecked;
+                d.indeterminate = false; // reset indeterminate
+            });
+        }
     }
 
-    // 3. Retourner la liste des fichiers (déjà triés par ton script)
-    return files;
+    // Propagate upwards (sync parents)
+    let currentItem = cb.closest('.gme-item') || cb.closest('details');
+    while (currentItem) {
+        let parentDetails = currentItem.parentElement.closest('details');
+        if (!parentDetails) break;
+
+        let parentCb = parentDetails.querySelector(':scope > summary .profile-cb');
+        if (!parentCb) break;
+
+        let childrenContainer = parentDetails.querySelector(':scope > div');
+        if (!childrenContainer) break;
+
+        let childCbs = Array.from(childrenContainer.children).map(el => {
+            if (el.classList.contains('gme-item') || el.classList.contains('gn-item')) {
+                return el.querySelector('.profile-cb');
+            }
+            if (el.tagName === 'DETAILS') {
+                return el.querySelector(':scope > summary .profile-cb');
+            }
+            return null;
+        }).filter(Boolean);
+
+        const allChecked = childCbs.length > 0 && childCbs.every(c => c.checked);
+        const someChecked = childCbs.some(c => c.checked || c.indeterminate);
+
+        parentCb.checked = allChecked;
+        parentCb.indeterminate = (!allChecked && someChecked);
+
+        currentItem = parentDetails;
+    }
+
+    // Mise à jour du graphique des écarts
+    window.updateProfileChart();
+};
+
+// 2. Fonction qui dessine le graphique "Profil de l'Activité Sélectionnée" (Barres d'écarts)
+window.updateProfileChart = function () {
+    const checkedGMEs = document.querySelectorAll('.gme-cb:checked');
+    const container = document.getElementById('profiling-section');
+
+    if (checkedGMEs.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+
+    let sumDays = 0;
+    let wAge = 0, dAge = 0;
+    let wSexe = 0, dSexe = 0;
+    let wAvqp = 0, dAvqp = 0;
+    let wAvqr = 0, dAvqr = 0;
+    let wCsarr = 0, dCsarr = 0;
+
+    checkedGMEs.forEach(cb => {
+        const days = parseInt(cb.dataset.days) || 0;
+        sumDays += days;
+
+        const age = parseFloat(cb.dataset.age);
+        if (!isNaN(age)) { wAge += age * days; dAge += days; }
+
+        const sexe = parseFloat(cb.dataset.sexe);
+        if (!isNaN(sexe)) { wSexe += sexe * days; dSexe += days; }
+
+        const avqp = parseFloat(cb.dataset.avqp);
+        if (!isNaN(avqp)) { wAvqp += avqp * days; dAvqp += days; }
+
+        const avqr = parseFloat(cb.dataset.avqr);
+        if (!isNaN(avqr)) { wAvqr += avqr * days; dAvqr += days; }
+
+        const csarr = parseFloat(cb.dataset.csarr);
+        if (!isNaN(csarr)) { wCsarr += csarr * days; dCsarr += days; }
+    });
+
+    const sAge = dAge > 0 ? (wAge / dAge).toFixed(1) : 0;
+    const sSexe = dSexe > 0 ? (wSexe / dSexe).toFixed(1) : 0;
+    const sAvqp = dAvqp > 0 ? (wAvqp / dAvqp).toFixed(2) : 0;
+    const sAvqr = dAvqr > 0 ? (wAvqr / dAvqr).toFixed(2) : 0;
+    const sCsarr = dCsarr > 0 ? (wCsarr / dCsarr).toFixed(2) : 0;
+
+    // Récupération des métriques globales stockées lors du chargement de l'établissement
+    const glob = window.globalMetrics || {};
+    const gAge = parseFloat(glob.avgAge) || 0;
+    const gSexe = parseFloat(glob.avgSexe) || 0;
+    const gAvqp = parseFloat(glob.avgAVQP) || 0;
+    const gAvqr = parseFloat(glob.avgAVQR) || 0;
+    const gCsarr = parseFloat(glob.avgCSARR) || 0;
+
+    const diffAge = gAge > 0 && sAge > 0 ? ((sAge - gAge) / gAge) * 100 : 0;
+    const diffSexe = gSexe > 0 && sSexe > 0 ? ((sSexe - gSexe) / gSexe) * 100 : 0;
+    const diffAvqp = gAvqp > 0 && sAvqp > 0 ? ((sAvqp - gAvqp) / gAvqp) * 100 : 0;
+    const diffAvqr = gAvqr > 0 && sAvqr > 0 ? ((sAvqr - gAvqr) / gAvqr) * 100 : 0;
+    const diffCsarr = gCsarr > 0 && sCsarr > 0 ? ((sCsarr - gCsarr) / gCsarr) * 100 : 0;
+
+    const ctx = document.getElementById('profilingChart').getContext('2d');
+    if (profilingChartInstance) profilingChartInstance.destroy();
+
+    profilingChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Âge Moyen', 'Sexe Ratio (%H)', 'AVQ Physique', 'AVQ Relationnel', 'Actes CSARR'],
+            datasets: [{
+                label: 'Écart % vs Moyen',
+                data: [diffAge, diffSexe, diffAvqp, diffAvqr, diffCsarr],
+                backgroundColor: [diffAge, diffSexe, diffAvqp, diffAvqr, diffCsarr].map(v => v >= 0 ? 'rgba(74, 222, 128, 0.5)' : 'rgba(248, 113, 113, 0.5)'),
+                borderColor: [diffAge, diffSexe, diffAvqp, diffAvqr, diffCsarr].map(v => v >= 0 ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'),
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            const val = context.raw.toFixed(1) + '%';
+                            const idx = context.dataIndex;
+                            const sel = [sAge, sSexe, sAvqp, sAvqr, sCsarr][idx];
+                            const globV = [gAge, gSexe, gAvqp, gAvqr, gCsarr][idx];
+                            return `${val} (Sélection: ${sel} vs Global: ${globV})`;
+                        }
+                    }
+                },
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: "Écart par rapport à la moyenne globale de l'établissement (%)", color: '#94a3b8' },
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#cbd5e1' }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: '#cbd5e1' }
+                }
+            }
+        }
+    });
+};
+
+// 3. Fonction qui affiche l'évolution temporelle d'un indicateur précis
+window.showIndicatorTrend = function (field, label, unit) {
+    const pd = window.allPeriodes;
+    if (!pd) return;
+
+    const section = document.getElementById('indicator-trend-section');
+    const titleEl = document.getElementById('indicator-trend-title');
+    titleEl.textContent = `Évolution : ${label} (${unit})`;
+    section.style.display = 'block';
+
+    const seriesData = pd.labels.map(p => {
+        let wSum = 0, wDays = 0;
+        Object.entries(pd.rawData[p] || {}).forEach(([k, gns]) => {
+            if (k === 'total') return;
+            Object.values(gns || {}).forEach(gmes => {
+                Object.values(gmes || {}).forEach(code => {
+                    const val = parseFloat(code[field]);
+                    const days = (parseInt(code.nb_journees_hc) || 0) + (parseInt(code.nb_journees_hp) || 0);
+                    if (!isNaN(val) && days > 0) {
+                        wSum += val * days;
+                        wDays += days;
+                    }
+                });
+            });
+        });
+        return wDays > 0 ? parseFloat((wSum / wDays).toFixed(2)) : null;
+    });
+
+    const ctx = document.getElementById('indicatorTrendChart').getContext('2d');
+    if (indicatorTrendChartInstance) indicatorTrendChartInstance.destroy();
+
+    indicatorTrendChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: pd.labels,
+            datasets: [{
+                label: `${label} (${unit})`,
+                data: seriesData,
+                borderColor: '#38bdf8',
+                backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true,
+                tension: 0.3,
+                spanGaps: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${label}: ${ctx.raw} ${unit}`
+                    }
+                }
+            },
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+            }
+        }
+    });
+
+    // Défilement automatique vers le graphique
+    section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+function updateDeptFilter() {
+    const selectedRegion = document.getElementById('filter-region').value;
+    const sites = Object.values(state.mapping);
+    const deptSelect = document.getElementById('filter-dept');
+
+    // Clear existing options except the first one
+    deptSelect.innerHTML = '<option value="">Tous les départements</option>';
+
+    let filteredDepts = sites;
+    if (selectedRegion) {
+        filteredDepts = sites.filter(s => s.reg_name === selectedRegion);
+    }
+
+    const depts = [...new Set(filteredDepts.map(s => s.dep_name ? `${s.dep_code} - ${s.dep_name}` : s.dep_code))].sort();
+
+    depts.forEach(dept => {
+        const opt = document.createElement('option');
+        opt.value = dept;
+        opt.textContent = dept;
+        deptSelect.appendChild(opt);
+    });
 }
 
 function renderDetails(data) {
@@ -802,7 +681,7 @@ function renderDetails(data) {
 
         if (sortedCMs.length > 0) {
             sortedCMs.forEach(([cmId, cmData]) => {
-                const cmLabel = catMajLabels[cmId] || cmId;
+                const cmLabel = state.catMajLabels[cmId] || cmId;
 
                 const cAge = cmData.dAge > 0 ? cmData.wAge / cmData.dAge : null;
                 const cSexe = cmData.dSexe > 0 ? cmData.wSexe / cmData.dSexe : null;
@@ -827,7 +706,7 @@ function renderDetails(data) {
 
                 const sortedGNs = Object.entries(cmData.gns).sort((a, b) => b[1].total - a[1].total);
                 sortedGNs.forEach(([gnId, gnData]) => {
-                    const gnLabel = gnLabels[gnId] || gnId;
+                    const gnLabel = state.gnLabels[gnId] || gnId;
                     const displayGnLabel = gnLabel.startsWith(gnId) ? gnLabel : `${gnId} - ${gnLabel}`;
 
                     const gAge = gnData.dAge > 0 ? gnData.wAge / gnData.dAge : null;
@@ -851,7 +730,7 @@ function renderDetails(data) {
 
                     const sortedGMEs = Object.entries(gnData.gmes).sort((a, b) => b[1].total - a[1].total);
                     sortedGMEs.forEach(([gmeId, gmeData]) => {
-                        const gmeLabel = gmeLabels[gmeId] || gmeId;
+                        const gmeLabel = state.gmeLabels[gmeId] || gmeId;
                         const displayGmeLabel = gmeLabel.startsWith(gmeId) ? gmeLabel : `${gmeId} - ${gmeLabel}`;
 
                         const hcStr = gmeData.hc > 0 ? `${gmeData.hc.toLocaleString()} HC` : '';
@@ -898,27 +777,12 @@ function renderDetails(data) {
         document.getElementById('det-smr-metrics').innerHTML = "";
     }
 }
-async function fetchLatestRelease() {
-    return release;
-}
 
-async function fetchLatestUpdateDate() {
-    try {
-        const resp = await fetch(RELEASE_URL);
-        if (!resp.ok) throw new Error("Failed to retrieve release data");
-        const data = await resp.json();
-        const dateStr = data.published_at.split('T')[0];
-        document.getElementById('update-badge').innerHTML = `Dernière mise à jour : ${dateStr}`;
-        document.getElementById('update-badge').title = data.name || "Nouvelles données";
-    } catch (err) {
-        console.warn("Impossible de récupérer la date de mise à jour dynamique:", err);
-        document.getElementById('update-badge').textContent = "Données : Mars 2026 (Live)";
-    }
-}
-
-function updateChart(labels, dataArr, hcArr, hpArr) {
+export function updateChart(labels, dataArr, hcArr, hpArr) {
     const ctx = document.getElementById('detailChart').getContext('2d');
-    if (chart) chart.destroy();
+
+    // CORRECTION : On utilise mainChartInstance
+    if (mainChartInstance) mainChartInstance.destroy();
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, 'rgba(139, 92, 246, 0.3)');
@@ -940,34 +804,21 @@ function updateChart(labels, dataArr, hcArr, hpArr) {
 
     if (hcArr && hcArr.some(v => v > 0)) {
         datasets.push({
-            label: 'HC',
-            data: hcArr,
-            borderColor: '#34d399',
-            borderWidth: 1.5,
-            pointRadius: 3,
-            pointHoverRadius: 5,
-            backgroundColor: 'transparent',
-            fill: false,
-            tension: 0.3,
-            borderDash: [4, 3]
+            label: 'HC', data: hcArr, borderColor: '#34d399', borderWidth: 1.5,
+            pointRadius: 3, pointHoverRadius: 5, backgroundColor: 'transparent',
+            fill: false, tension: 0.3, borderDash: [4, 3]
         });
     }
     if (hpArr && hpArr.some(v => v > 0)) {
         datasets.push({
-            label: 'HP',
-            data: hpArr,
-            borderColor: '#f59e0b',
-            borderWidth: 1.5,
-            pointRadius: 3,
-            pointHoverRadius: 5,
-            backgroundColor: 'transparent',
-            fill: false,
-            tension: 0.3,
-            borderDash: [4, 3]
+            label: 'HP', data: hpArr, borderColor: '#f59e0b', borderWidth: 1.5,
+            pointRadius: 3, pointHoverRadius: 5, backgroundColor: 'transparent',
+            fill: false, tension: 0.3, borderDash: [4, 3]
         });
     }
 
-    chart = new Chart(ctx, {
+    // CORRECTION : On assigne à mainChartInstance
+    mainChartInstance = new Chart(ctx, {
         type: 'line',
         data: { labels, datasets },
         options: {
@@ -981,245 +832,3 @@ function updateChart(labels, dataArr, hcArr, hpArr) {
         }
     });
 }
-
-// ----------------------------------------------------
-// Interactive Profiling Chart Logic
-// ----------------------------------------------------
-let profilingChartInstance = null;
-
-window.handleProfileToggle = function (cb) {
-    const isChecked = cb.checked;
-
-    // 1. Propagate downwards (check all children)
-    if (cb.classList.contains('cm-cb') || cb.classList.contains('gn-cb')) {
-        const container = cb.closest('details');
-        if (container) {
-            const descendants = container.querySelectorAll('.profile-cb');
-            descendants.forEach(d => {
-                d.checked = isChecked;
-                d.indeterminate = false; // reset indeterminate
-            });
-        }
-    }
-
-    // 2. Propagate upwards (sync parents)
-    let currentItem = cb.closest('.gme-item') || cb.closest('details');
-    while (currentItem) {
-        let parentDetails = currentItem.parentElement.closest('details');
-        if (!parentDetails) break;
-
-        let parentCb = parentDetails.querySelector(':scope > summary .profile-cb');
-        if (!parentCb) break;
-
-        // Find the direct children container
-        let childrenContainer = parentDetails.querySelector(':scope > div');
-        if (!childrenContainer) break;
-
-        // Collect all direct child checkboxes (GN summary cb or GME cb)
-        let childCbs = Array.from(childrenContainer.children).map(el => {
-            if (el.classList.contains('gme-item') || el.classList.contains('gn-item')) {
-                return el.querySelector('.profile-cb');
-            }
-            if (el.tagName === 'DETAILS') {
-                return el.querySelector(':scope > summary .profile-cb');
-            }
-            return null;
-        }).filter(Boolean);
-
-        const allChecked = childCbs.length > 0 && childCbs.every(c => c.checked);
-        const someChecked = childCbs.some(c => c.checked || c.indeterminate);
-
-        parentCb.checked = allChecked;
-        parentCb.indeterminate = (!allChecked && someChecked);
-
-        currentItem = parentDetails;
-    }
-
-    // 3. Update the chart based on current selection
-    updateProfileChart();
-};
-
-window.updateProfileChart = function () {
-    const checkedGMEs = document.querySelectorAll('.gme-cb:checked');
-    const container = document.getElementById('profiling-section');
-
-    if (checkedGMEs.length === 0) {
-        container.style.display = 'none';
-        return;
-    }
-
-    container.style.display = 'block';
-
-    let sumDays = 0;
-    let wAge = 0, dAge = 0;
-    let wSexe = 0, dSexe = 0;
-    let wAvqp = 0, dAvqp = 0;
-    let wAvqr = 0, dAvqr = 0;
-    let wCsarr = 0, dCsarr = 0;
-
-    checkedGMEs.forEach(cb => {
-        const days = parseInt(cb.dataset.days) || 0;
-        sumDays += days;
-
-        const age = parseFloat(cb.dataset.age);
-        if (!isNaN(age)) { wAge += age * days; dAge += days; }
-
-        const sexe = parseFloat(cb.dataset.sexe);
-        if (!isNaN(sexe)) { wSexe += sexe * days; dSexe += days; }
-
-        const avqp = parseFloat(cb.dataset.avqp);
-        if (!isNaN(avqp)) { wAvqp += avqp * days; dAvqp += days; }
-
-        const avqr = parseFloat(cb.dataset.avqr);
-        if (!isNaN(avqr)) { wAvqr += avqr * days; dAvqr += days; }
-
-        const csarr = parseFloat(cb.dataset.csarr);
-        // Using 'days' identically as stays (csarr uses days in current iteration too)
-        if (!isNaN(csarr)) { wCsarr += csarr * days; dCsarr += days; }
-    });
-
-    const sAge = dAge > 0 ? (wAge / dAge).toFixed(1) : 0;
-    const sSexe = dSexe > 0 ? (wSexe / dSexe).toFixed(1) : 0;
-    const sAvqp = dAvqp > 0 ? (wAvqp / dAvqp).toFixed(2) : 0;
-    const sAvqr = dAvqr > 0 ? (wAvqr / dAvqr).toFixed(2) : 0;
-    const sCsarr = dCsarr > 0 ? (wCsarr / dCsarr).toFixed(2) : 0;
-
-    const glob = window.globalMetrics || {};
-    const gAge = parseFloat(glob.avgAge) || 0;
-    const gSexe = parseFloat(glob.avgSexe) || 0;
-    const gAvqp = parseFloat(glob.avgAVQP) || 0;
-    const gAvqr = parseFloat(glob.avgAVQR) || 0;
-    const gCsarr = parseFloat(glob.avgCSARR) || 0;
-
-    const diffAge = gAge > 0 && sAge > 0 ? ((sAge - gAge) / gAge) * 100 : 0;
-    const diffSexe = gSexe > 0 && sSexe > 0 ? ((sSexe - gSexe) / gSexe) * 100 : 0;
-    const diffAvqp = gAvqp > 0 && sAvqp > 0 ? ((sAvqp - gAvqp) / gAvqp) * 100 : 0;
-    const diffAvqr = gAvqr > 0 && sAvqr > 0 ? ((sAvqr - gAvqr) / gAvqr) * 100 : 0;
-    const diffCsarr = gCsarr > 0 && sCsarr > 0 ? ((sCsarr - gCsarr) / gCsarr) * 100 : 0;
-
-    const ctx = document.getElementById('profilingChart').getContext('2d');
-    if (profilingChartInstance) profilingChartInstance.destroy();
-
-    profilingChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Âge Moyen', 'Sexe Ratio (%H)', 'AVQ Physique', 'AVQ Relationnel', 'Actes CSARR'],
-            datasets: [{
-                label: 'Écart % vs Moyen',
-                data: [diffAge, diffSexe, diffAvqp, diffAvqr, diffCsarr],
-                backgroundColor: [diffAge, diffSexe, diffAvqp, diffAvqr, diffCsarr].map(v => v >= 0 ? 'rgba(74, 222, 128, 0.5)' : 'rgba(248, 113, 113, 0.5)'),
-                borderColor: [diffAge, diffSexe, diffAvqp, diffAvqr, diffCsarr].map(v => v >= 0 ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'),
-                borderWidth: 1,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function (context) {
-                            const val = context.raw.toFixed(1) + '%';
-                            const idx = context.dataIndex;
-                            const sel = [sAge, sSexe, sAvqp, sAvqr, sCsarr][idx];
-                            const globV = [gAge, gSexe, gAvqp, gAvqr, gCsarr][idx];
-                            return `${val} (Sélection: ${sel} vs Global: ${globV})`;
-                        }
-                    }
-                },
-                legend: { display: false }
-            },
-            scales: {
-                x: {
-                    title: { display: true, text: "Écart par rapport à la moyenne globale de l'établissement (%)", color: '#94a3b8' },
-                    grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { color: '#cbd5e1' }
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: { color: '#cbd5e1' }
-                }
-            }
-        }
-    });
-};
-
-function closeDetails() { document.getElementById('detail-view').style.display = 'none'; }
-
-// ----------------------------------------------------
-// Indicator Temporal Trend
-// ----------------------------------------------------
-let indicatorTrendChartInstance = null;
-
-window.showIndicatorTrend = function (field, label, unit) {
-    const pd = window.allPeriodes;
-    if (!pd) return;
-
-    const section = document.getElementById('indicator-trend-section');
-    const titleEl = document.getElementById('indicator-trend-title');
-    titleEl.textContent = `\u00c9volution : ${label} (${unit})`;
-    section.style.display = 'block';
-
-    const seriesData = pd.labels.map(p => {
-        let wSum = 0, wDays = 0;
-        Object.entries(pd.rawData[p] || {}).forEach(([k, gns]) => {
-            if (k === 'total') return;
-            Object.values(gns || {}).forEach(gmes => {
-                Object.values(gmes || {}).forEach(code => {
-                    const val = parseFloat(code[field]);
-                    const days = (parseInt(code.nb_journees_hc) || 0) + (parseInt(code.nb_journees_hp) || 0);
-                    if (!isNaN(val) && days > 0) {
-                        wSum += val * days;
-                        wDays += days;
-                    }
-                });
-            });
-        });
-        return wDays > 0 ? parseFloat((wSum / wDays).toFixed(2)) : null;
-    });
-
-    const ctx = document.getElementById('indicatorTrendChart').getContext('2d');
-    if (indicatorTrendChartInstance) indicatorTrendChartInstance.destroy();
-
-    indicatorTrendChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: pd.labels,
-            datasets: [{
-                label: `${label} (${unit})`,
-                data: seriesData,
-                borderColor: '#38bdf8',
-                backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                borderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6,
-                fill: true,
-                tension: 0.3,
-                spanGaps: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: ctx => `${label}: ${ctx.raw} ${unit}`
-                    }
-                }
-            },
-            scales: {
-                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
-                x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 10 } } }
-            }
-        }
-    });
-
-    // Scroll the section into view
-    section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-};
-
-$(document).ready(init);
