@@ -216,6 +216,7 @@ function applyFilters(event) {
     // Handle dependency: if region changes, update depts
     if (event && event.target && event.target.id === 'filter-region') {
         updateDeptFilter();
+        document.getElementById('filter-dept').value = "";
     }
 
     // Apply filtering to DataTables
