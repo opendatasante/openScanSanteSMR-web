@@ -57,7 +57,7 @@ async function init() {
         populateFilters();
 
         // 3. Calculer les statistiques globales pour le dashboard
-        updateGlobalStats();
+        // updateGlobalStats();
 
         // 4. Préparer les données pour DataTables
         const tableData = Object.entries(mapping).map(([finess, info]) => [
@@ -81,6 +81,12 @@ async function init() {
             pageLength: 15,
             dom: '<"top"f>rt<"bottom"lip><"clear">'
         });
+        
+        table.on('draw', function () {
+            updateGlobalStats();
+            refreshViews();
+        });
+
 
         // 6. Événement clic sur ligne
         $('#main-table tbody').on('click', 'tr', function () {
@@ -123,7 +129,6 @@ async function init() {
         document.getElementById("map-view").style.display = "block";
 
         initMap();
-
         refreshViews();
     };
 
@@ -202,24 +207,22 @@ function updateDeptFilter() {
 }
 
 function applyFilters(event) {
-    const regVal = document.getElementById('filter-region').value;
-    const deptVal = document.getElementById('filter-dept').value;
-    const sectorVal = document.getElementById('filter-sector').value;
+    const regionSelect = document.getElementById('filter-region');
+    const deptSelect = document.getElementById('filter-dept');
+    const sectorSelect = document.getElementById('filter-sector');
 
-    // Handle dependency: if region changes, update depts
     if (event && event.target && event.target.id === 'filter-region') {
         updateDeptFilter();
+        deptSelect.value = "";
     }
 
-    // Apply filtering to DataTables
-    // Col 2: Dept (index 2)
-    // Col 3: Region (index 3)
-    // Col 4: Categorie (index 4)
+    const regVal = regionSelect.value;
+    const deptVal = deptSelect.value;
+    const sectorVal = sectorSelect.value;
 
     table.column(3).search(regVal);
 
     if (deptVal) {
-        // Use exact match for dept since we have "01 - AIN" and might have "01 - AIN..."
         table.column(2).search('^' + deptVal.replace(/-/g, '\\-') + '$', true, false);
     } else {
         table.column(2).search('');
@@ -227,14 +230,7 @@ function applyFilters(event) {
 
     table.column(4).search(sectorVal);
 
-    table.draw();
-
-    // Update Stats based on filtered data
-    updateGlobalStats();
-
-    if (currentView === "map") {
-        refreshViews();
-    }
+    table.draw(); // 👉 c’est ce draw qui déclenche refreshViews()
 }
 
 function refreshViews() {
@@ -246,31 +242,32 @@ function refreshViews() {
         filteredSites[f] = mapping[f];
     });
 
+    // marqueurs toujours à jour
+    updateMapMarkers(filteredSites);
+
     if (currentView !== "map") return;
 
-    // Détection des filtres actifs
-    const noFilter =
-        !document.getElementById('filter-region').value &&
-        !document.getElementById('filter-dept').value &&
-        !document.getElementById('filter-sector').value;
+    const regVal = document.getElementById('filter-region').value;
+    const deptVal = document.getElementById('filter-dept').value;
+    const sectorVal = document.getElementById('filter-sector').value;
 
-    // Départements présents dans les données filtrées
+    const noFilter = !regVal && !deptVal && !sectorVal;
+
     const filteredDepts = new Set(
         filteredFiness.map(f => String(mapping[f].dep_code))
     );
-
     const deptCount = filteredDepts.size;
 
-    // Toujours mettre à jour les marqueurs
-    updateMapMarkers(filteredSites);
-
-    // Cas 1 : aucun filtre → vue France
     if (noFilter) {
         map.setView([46.6, 2.5], 6);
         return;
     }
 
-    // Cas 2 : un seul département → zoom dessus
+    if (regVal && (!deptVal || deptVal.trim() === "")) {
+        fitMapToMarkers();
+        return;
+    }
+
     if (deptCount === 1) {
         const f = filteredFiness[0];
         const s = mapping[f];
@@ -281,11 +278,10 @@ function refreshViews() {
             String(s.dep_code)
         );
 
-        map.setView([lat, lon], 9);
+        map.flyTo([lat, lon], 9, { duration: 0.8 });
         return;
     }
 
-    // Cas 3 : plusieurs départements → zoom global
     fitMapToMarkers();
 }
 
@@ -386,7 +382,7 @@ function projectDOMCoordinates(lat, lon, depCode) {
 
 function fitMapToMarkers() {
     const bounds = markersLayer.getBounds();
-    if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30] });
+    if (bounds.isValid()) map.flyToBounds(bounds, { padding: [30, 30], duration: 0.8 });
 }
 
 function updateMapMarkers(sites) {
