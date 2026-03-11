@@ -213,12 +213,13 @@ function applyFilters(event) {
     const deptSelect = document.getElementById('filter-dept');
     const sectorSelect = document.getElementById('filter-sector');
 
-    // Si la région change → on met à jour les départements
+    // Si la région change → reset du département AVANT tout
     if (event && event.target && event.target.id === 'filter-region') {
         updateDeptFilter();
-        deptSelect.value = ""; // 🔥 IMPORTANT : reset du filtre département
+        deptSelect.value = "";   // 🔥 Reset immédiat
     }
 
+    // Maintenant on lit les valeurs (elles sont correctes)
     const regVal = regionSelect.value;
     const deptVal = deptSelect.value;
     const sectorVal = sectorSelect.value;
