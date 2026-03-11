@@ -5,20 +5,20 @@ let gnLabels = {};
 let gmeLabels = {};
 let table = null;
 let chart = null;
+let map = null;
+let markersLayer = null;
+let currentView = "list";
+
 
 async function init() {
     try {
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const dataBaseUrl = isLocal
-            ? '../data'
-            : 'https://cdn.jsdelivr.net/gh/opendatasante/openScanSanteSMR-web@main/data';
+        const dataBaseUrl = 'https://cdn.jsdelivr.net/gh/opendatasante/openScanSanteSMR-web@main/data';
 
         console.log('[SMR] hostname:', window.location.hostname);
-        console.log('[SMR] isLocal:', isLocal);
         console.log('[SMR] dataBaseUrl:', dataBaseUrl);
 
         // 1. Charger l'index (Mapping Finess -> Géo)
-        const mappingUrl = `${dataBaseUrl}/search/finess_geo_mapping.json`;
+        const mappingUrl = `${dataBaseUrl}/search/finess_geo_mapping_enrichis.json`;
         console.log('[SMR] Fetching mapping from:', mappingUrl);
         const resp = await fetch(mappingUrl);
         console.log('[SMR] Mapping response status:', resp.status, resp.ok);
@@ -97,6 +97,33 @@ async function init() {
         <small>Vérifiez que le fichier <code>finess_geo_mapping.json</code> existe dans <code>data/search/</code>.</small>
     </div>`);
     }
+
+    document.getElementById("btn-list").onclick = () => {
+        currentView = "list";
+
+        document.getElementById("btn-list").classList.add("active");
+        document.getElementById("btn-map").classList.remove("active");
+
+        document.getElementById("main-table_wrapper").style.display = "block";
+        document.getElementById("map-view").style.display = "none";
+
+        refreshViews();
+    };
+
+    document.getElementById("btn-map").onclick = () => {
+        currentView = "map";
+
+        document.getElementById("btn-map").classList.add("active");
+        document.getElementById("btn-list").classList.remove("active");
+
+        document.getElementById("main-table_wrapper").style.display = "none";
+        document.getElementById("map-view").style.display = "block";
+
+        initMap();
+        refreshViews();
+    };
+
+
 }
 
 function populateFilters() {
@@ -179,7 +206,89 @@ function applyFilters(event) {
 
     // Update Stats based on filtered data
     updateGlobalStats();
+
+    if (currentView === "map") {
+        refreshViews();
+    }
 }
+
+function refreshViews() {
+    const filteredData = table.rows({ filter: 'applied' }).data().toArray();
+    const filteredFiness = filteredData.map(r => r[0]);
+
+    const filteredSites = {};
+    filteredFiness.forEach(f => {
+        filteredSites[f] = mapping[f];
+    });
+
+    if (currentView === "map") {
+        updateMapMarkers(filteredSites);
+    }
+}
+
+
+function initMap() {
+    if (map) return;
+
+    map = L.map('map-view', {
+        zoomControl: true,
+        scrollWheelZoom: true
+    }).setView([46.6, 2.5], 6);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 18
+    }).addTo(map);
+
+    markersLayer = L.layerGroup().addTo(map);
+}
+
+function fitMapToMarkers() {
+    const bounds = markersLayer.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30] });
+}
+
+
+function updateMapMarkers(sites) {
+    markersLayer.clearLayers();
+
+    // Vérification de sécurité
+    if (!sites || typeof sites !== "object") {
+        console.error("updateMapMarkers: sites n'est pas un objet valide", sites);
+        return;
+    }
+
+    Object.entries(sites).forEach(([finess, s]) => {
+
+        // Vérification supplémentaire
+        if (!mapping[finess]) {
+            console.warn("FINESS absent du mapping:", finess);
+            return;
+        }
+
+        if (!s.latitude || !s.longitude) return;
+
+        const marker = L.marker([s.latitude, s.longitude]).addTo(markersLayer);
+
+        marker.on("click", () => {
+            console.log("Marker clicked, FINESS =", finess);
+            loadEstablishment(finess);
+        });
+
+        marker.bindPopup(`
+            <strong>${s.raison_sociale}</strong><br>
+            ${s.dep_name} (${s.dep_code})<br>
+            ${s.categorie}
+        `);
+    });
+
+    const bounds = markersLayer.getBounds();
+    if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [30, 30] });
+    }
+}
+
+
 
 function updateGlobalStats() {
     let sites;
@@ -234,6 +343,7 @@ document.addEventListener('keydown', function (event) {
 });
 
 async function loadEstablishment(finess) {
+
     // Reset & Show Drawer
     document.getElementById('detail-view').style.display = 'block';
     document.getElementById('det-name').textContent = mapping[finess].raison_sociale;
@@ -241,28 +351,24 @@ async function loadEstablishment(finess) {
     document.getElementById('det-raw').textContent = "Accès aux fichiers JSON de l'établissement...";
 
     try {
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         let historyFiles = [];
 
-        if (isLocal) {
-            // En local, on teste avec latest.json directement
-            historyFiles = [{
-                name: 'latest.json',
-                download_url: `../data/restitutions/etablissements/${finess}/latest.json?t=${new Date().getTime()}`
-            }];
-        } else {
-            // 1. Lister les fichiers dans le dossier GitHub de l'établissement
-            historyFiles = await fetchHistory(finess);
-        }
+        historyFiles = await fetchHistory(finess);
 
         if (historyFiles.length === 0) {
             throw new Error("Aucune donnée trouvée pour cet établissement.");
         }
 
         // 2. Charger tous les fichiers en parallèle
-        const dataPromises = historyFiles.map(path =>
-            fetch(CDN_PREFIX + path).then(r => r.json())
-        );
+        const dataPromises = historyFiles.map(file => {
+            let url;
+
+            url = CDN_PREFIX + file;
+
+            return fetch(url).then(r => r.json());
+        });
+
+
 
         const allHistoricalData = await Promise.all(dataPromises);
 
