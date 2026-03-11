@@ -81,8 +81,6 @@ async function init() {
             pageLength: 15,
             dom: '<"top"f>rt<"bottom"lip><"clear">'
         });
-
-        initMap();
         
         table.on('draw', function () {
             updateGlobalStats();
@@ -130,6 +128,7 @@ async function init() {
         document.getElementById("main-table_wrapper").style.display = "none";
         document.getElementById("map-view").style.display = "block";
 
+        initMap();
         refreshViews();
     };
 
