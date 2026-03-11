@@ -83,10 +83,8 @@ async function init() {
         });
 
         table.on('draw', function () {
-            updateGlobalStats();   // stats toujours à jour
-        
-            if (currentView === "map") {
-                refreshViews();    // carte toujours à jour
+            updateGlobalStats();
+            refreshViews();    // carte toujours à jour
             }
         });
 
@@ -215,18 +213,15 @@ function applyFilters(event) {
     const deptSelect = document.getElementById('filter-dept');
     const sectorSelect = document.getElementById('filter-sector');
 
-    // Si la région change → reset du département AVANT tout
     if (event && event.target && event.target.id === 'filter-region') {
         updateDeptFilter();
-        deptSelect.value = "";   // 🔥 Reset immédiat
+        deptSelect.value = "";
     }
 
-    // Maintenant on lit les valeurs (elles sont correctes)
     const regVal = regionSelect.value;
     const deptVal = deptSelect.value;
     const sectorVal = sectorSelect.value;
 
-    // Application des filtres DataTables
     table.column(3).search(regVal);
 
     if (deptVal) {
@@ -237,7 +232,7 @@ function applyFilters(event) {
 
     table.column(4).search(sectorVal);
 
-    table.draw();
+    table.draw(); // 👉 c’est ce draw qui déclenche refreshViews()
 }
 
 function refreshViews() {
@@ -249,7 +244,7 @@ function refreshViews() {
         filteredSites[f] = mapping[f];
     });
 
-    // 🔥 Toujours mettre à jour les marqueurs UNE SEULE FOIS
+    // marqueurs toujours à jour
     updateMapMarkers(filteredSites);
 
     if (currentView !== "map") return;
@@ -263,22 +258,18 @@ function refreshViews() {
     const filteredDepts = new Set(
         filteredFiness.map(f => String(mapping[f].dep_code))
     );
-
     const deptCount = filteredDepts.size;
 
-    // Cas 1 : aucun filtre → vue France
     if (noFilter) {
         map.setView([46.6, 2.5], 6);
         return;
     }
 
-    // Cas 2 : région sélectionnée mais département = "Tous les départements"
     if (regVal && (!deptVal || deptVal.trim() === "")) {
         fitMapToMarkers();
         return;
     }
 
-    // Cas 3 : un seul département → zoom dessus
     if (deptCount === 1) {
         const f = filteredFiness[0];
         const s = mapping[f];
@@ -293,7 +284,6 @@ function refreshViews() {
         return;
     }
 
-    // Cas 4 : plusieurs départements → zoom global
     fitMapToMarkers();
 }
 
