@@ -75,7 +75,7 @@
                 </div>
             </div>
 
-            <!-- Barre de Filtres -->
+            <!-- 1. Barre de Filtres Géographiques & Administratifs -->
             <div class="filters-bar">
                 <div class="filter-group">
                     <label class="filter-label" for="filter-region">Région</label>
@@ -93,6 +93,29 @@
                     <label class="filter-label" for="filter-sector">Secteur / Catégorie</label>
                     <select id="filter-sector" class="filter-select">
                         <option value="">Toutes les catégories</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 2. NOUVELLE Barre de Filtres d'Activité Médicale (En dessous) -->
+            <div class="filters-bar" style="margin-top: -0.5rem; border-color: rgba(139, 92, 246, 0.3);">
+                <div class="filter-group">
+                    <label class="filter-label" style="color: var(--primary-light);">Catégorie Majeure
+                        (Activité)</label>
+                    <select id="filter-cm" class="filter-select">
+                        <option value="">Activité globale (Toutes pathologies)</option>
+                    </select>
+                </div>
+                <div class="filter-group" id="group-filter-gn" style="display: none;">
+                    <label class="filter-label" style="color: var(--primary-light);">Groupe Nosologique</label>
+                    <select id="filter-gn" class="filter-select">
+                        <option value="">Tous les GN</option>
+                    </select>
+                </div>
+                <div class="filter-group" id="group-filter-gme" style="display: none;">
+                    <label class="filter-label" style="color: var(--primary-light);">GME</label>
+                    <select id="filter-gme" class="filter-select">
+                        <option value="">Tous les GME</option>
                     </select>
                 </div>
             </div>
@@ -126,10 +149,10 @@
             <div id="det-meta-top" style="margin-bottom: 0.5rem;"></div>
             <h2 id="det-name" style="margin: 0 0 1.5rem 0; font-size: 1.8rem; line-height: 1.2;">...</h2>
 
-            <div class="section-title">Analyse Temporelle</div>
+            <div class="section-title">Volume global d'activité</div>
             <div class="chart-container">
-                <h4 style="margin: 0 0 1.2rem 0; font-weight: 400; font-size: 0.85rem; color: var(--text-muted);">Volume
-                    global d'activité (Journées cumulées)</h4>
+                <h4 style="margin: 0 0 1.2rem 0; font-weight: 400; font-size: 0.85rem; color: var(--text-muted);">
+                    Journées cumulées</h4>
                 <canvas id="detailChart"></canvas>
             </div>
 
@@ -138,7 +161,7 @@
                 <!-- Rempli en JS -->
             </div>
 
-            <div class="section-title">Indicateurs Spécialisés SMR (Période)</div>
+            <div class="section-title">Indicateurs Spécialisés SMR (dernière période)</div>
             <div id="det-smr-metrics" class="metric-grid">
                 <!-- Rempli en JS: Age, Sexe, AVQ, CSARR -->
             </div>
@@ -159,7 +182,7 @@
             <div class="section-title">Détail de l'Activité (CM > GN > GME)</div>
             <div id="profiling-section" style="display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                    <div class="section-title" style="margin-bottom: 0;">Profil de l'Activité Sélectionnée</div>
+                    <div class="section-title" style="margin-bottom: 0;">Profil de la sélection</div>
                     <button
                         onclick="document.getElementById('profiling-section').style.display='none'; document.querySelectorAll('.profile-cb').forEach(cb=>{ cb.checked=false; cb.indeterminate=false; });"
                         style="background: none; border: none; color: var(--text-muted); font-size: 1.1rem; cursor: pointer; padding: 0.2rem 0.5rem;"

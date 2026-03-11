@@ -7,7 +7,9 @@ export const state = {
     gmeLabels: {},
     table: null,
     currentView: "list",
-    globalMetrics: {}
+    globalMetrics: {},
+    optionsTree: [],
+    mapCustomData: null
 };
 
 export const config = {

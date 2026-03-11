@@ -356,7 +356,7 @@ window.showIndicatorTrend = function (field, label, unit) {
 
     const section = document.getElementById('indicator-trend-section');
     const titleEl = document.getElementById('indicator-trend-title');
-    titleEl.textContent = `Évolution : ${label} (${unit})`;
+    titleEl.textContent = `Évolution de l'indicateur ${label} (${unit})`;
     section.style.display = 'block';
 
     const seriesData = pd.labels.map(p => {
@@ -631,8 +631,8 @@ function renderDetails(data) {
         // Mise à jour des titres de section pour inclure la période et la date
         const sectionTitles = document.querySelectorAll('#detail-content .section-title');
         sectionTitles.forEach(el => {
-            if (el.textContent.includes("Dernière Période Connue") || el.textContent.includes("Période :")) {
-                el.textContent = `Période : ¹${lastP}`.replace('¹', '');
+            if (el.textContent.includes("Dernière Période Connue") || el.textContent.includes("Période ")) {
+                el.textContent = `Période ¹${lastP}`.replace('¹', '');
             }
         });
 
@@ -675,7 +675,7 @@ function renderDetails(data) {
 
         // Render Activity Breakdown Hierarchical
         let breakdownHtml = '<div style="margin-top: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px; padding: 1rem; border: 1px solid rgba(255,255,255,0.05);">';
-        breakdownHtml += '<h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; color: var(--primary-light);">Détail de l\'Activité (CM > GN > GME)</h4>';
+        // breakdownHtml += '<h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; color: var(--primary-light);">Détail de l\'Activité (CM > GN > GME)</h4>';
 
         const sortedCMs = Object.entries(fullBreakdown).sort((a, b) => b[1].total - a[1].total);
 
@@ -831,4 +831,96 @@ export function updateChart(labels, dataArr, hcArr, hpArr) {
             }
         }
     });
+}
+
+// js/ui.js (à la fin du fichier)
+import { fetchMapActivityData } from './api.js'; // Assurez-vous d'importer la nouvelle fonction en haut du fichier !
+
+export function initActivityFilters() {
+    const cmSelect = document.getElementById('filter-cm');
+    const gnSelect = document.getElementById('filter-gn');
+    const gmeSelect = document.getElementById('filter-gme');
+
+    // Remplir les CM
+    state.optionsTree.forEach(cm => {
+        cmSelect.add(new Option(`${cm.value} - ${cm.text.substring(0, 40)}...`, cm.value));
+    });
+
+    cmSelect.addEventListener('change', async () => {
+        const cmVal = cmSelect.value;
+        gnSelect.innerHTML = '<option value="">Tous les GN de cette CM</option>';
+        gmeSelect.innerHTML = '<option value="">Tous les GME</option>';
+
+        if (cmVal) {
+            const cmNode = state.optionsTree.find(c => c.value === cmVal);
+            if (cmNode) {
+                (cmNode.groupes_nosologiques || []).forEach(gn => {
+                    gnSelect.add(new Option(`${gn.value} - ${gn.text.substring(0, 40)}...`, gn.value));
+                });
+            }
+            document.getElementById('group-filter-gn').style.display = 'flex';
+        } else {
+            document.getElementById('group-filter-gn').style.display = 'none';
+            document.getElementById('group-filter-gme').style.display = 'none';
+        }
+        await applyActivityFilter();
+    });
+
+    gnSelect.addEventListener('change', async () => {
+        const cmVal = cmSelect.value;
+        const gnVal = gnSelect.value;
+        gmeSelect.innerHTML = '<option value="">Tous les GME de ce GN</option>';
+
+        if (gnVal) {
+            const cmNode = state.optionsTree.find(c => c.value === cmVal);
+            const gnNode = cmNode?.groupes_nosologiques.find(g => g.value === gnVal);
+            if (gnNode) {
+                (gnNode.groupes_medico_economiques || []).forEach(gme => {
+                    gmeSelect.add(new Option(`${gme.value} - ${gme.text.substring(0, 40)}...`, gme.value));
+                });
+            }
+            document.getElementById('group-filter-gme').style.display = 'flex';
+        } else {
+            document.getElementById('group-filter-gme').style.display = 'none';
+        }
+        await applyActivityFilter();
+    });
+
+    gmeSelect.addEventListener('change', applyActivityFilter);
+}
+
+async function applyActivityFilter() {
+    const cm = document.getElementById('filter-cm').value;
+    const gn = document.getElementById('filter-gn').value;
+    const gme = document.getElementById('filter-gme').value;
+
+    if (!cm) {
+        state.mapCustomData = null; // Retour à la vue globale
+    } else {
+        // Indication visuelle du chargement
+        document.body.style.cursor = 'wait';
+        document.getElementById('btn-map').textContent = "Calcul en cours...";
+
+        state.mapCustomData = await fetchMapActivityData(cm, gn, gme);
+
+        document.body.style.cursor = 'default';
+        document.getElementById('btn-map').textContent = "Carte";
+    }
+
+    if (!cm) {
+        state.mapCustomData = null;
+    } else {
+        document.body.style.cursor = 'wait';
+        state.mapCustomData = await fetchMapActivityData(cm, gn, gme);
+        document.body.style.cursor = 'default';
+    }
+
+    if (state.table) {
+        state.table.draw();
+        updateGlobalStats();
+    }
+
+    if (state.currentView === 'map') {
+        refreshViews();
+    }
 }

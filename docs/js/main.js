@@ -2,7 +2,7 @@
 import { state } from './state.js';
 import { fetchInitialData, fetchLatestUpdateDate } from './api.js';
 import { initMap, refreshViews } from './map.js';
-import { populateFilters, applyFilters, updateGlobalStats, loadEstablishment } from './ui.js';
+import { populateFilters, applyFilters, updateGlobalStats, loadEstablishment, initActivityFilters } from './ui.js';
 
 async function init() {
     try {
@@ -10,6 +10,7 @@ async function init() {
         await fetchLatestUpdateDate();
 
         populateFilters();
+        initActivityFilters();
 
         // Initialisation DataTables
         const tableData = Object.entries(state.mapping).map(([finess, info]) => [
@@ -27,6 +28,15 @@ async function init() {
             language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json' },
             pageLength: 15,
             dom: '<"top"f>rt<"bottom"lip><"clear">'
+        });
+
+        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+            if (!state.mapCustomData) return true; // Si pas de filtre médical, on affiche la ligne
+
+            const finess = data[0]; // Le FINESS est dans la 1ère colonne (index 0)
+            const volume = state.mapCustomData[finess] || 0;
+
+            return volume > 0; // On garde la ligne UNIQUEMENT si l'hôpital a de l'activité
         });
 
         updateGlobalStats();

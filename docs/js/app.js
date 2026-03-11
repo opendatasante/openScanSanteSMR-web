@@ -81,7 +81,7 @@ async function init() {
             pageLength: 15,
             dom: '<"top"f>rt<"bottom"lip><"clear">'
         });
-        
+
         table.on('draw', function () {
             updateGlobalStats();
             refreshViews();
@@ -137,7 +137,7 @@ async function init() {
 
 async function loadGlobalTotals() {
     try {
-        const url = "https://cdn.jsdelivr.net/gh/sebastiencys/openScanSanteSMR-data/data/restitutions/total/latest.json";
+        const url = `${config.cdnPrefix}data/restitutions/total/latest.json`;
         const resp = await fetch(url);
         const json = await resp.json();
 

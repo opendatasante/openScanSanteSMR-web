@@ -51,27 +51,51 @@ export function refreshViews() {
     fitMapToMarkers();
 }
 
+// Dans js/map.js
 function updateMapMarkers(sites) {
     markersLayer.clearLayers();
+
     Object.entries(sites).forEach(([finess, s]) => {
         if (!state.mapping[finess] || !s.latitude || !s.longitude) return;
 
-        const total = s.total_journees || 0;
-        const radius = Math.max(3, Math.sqrt(total) * 0.05);
+        let total = 0;
+
+        // C'EST ICI QUE TOUT CHANGE :
+        if (state.mapCustomData !== null) {
+            total = state.mapCustomData[finess] || 0;
+            // Magique : Si l'hôpital n'a pas d'activité dans cette catégorie, on le masque !
+            if (total === 0) return;
+        } else {
+            total = s.total_journees || 0;
+        }
+
+        // On ajuste le coefficient pour que les bulles des petits GME restent visibles
+        //const multiplier = state.mapCustomData !== null ? 0.15 : 0.05;
+        const multiplier = 0.05;
+        //const radius = Math.max(4, Math.sqrt(total) * multiplier);
+        const radius = Math.max(3, Math.sqrt(total) * multiplier);
+
         const isPrivate = (s.categorie || "").toUpperCase().includes("PRIV");
         const color = isPrivate ? "#ff6b6b" : "#4dabf7";
 
         const { lat, lon } = projectDOMCoordinates(s.latitude, s.longitude, String(s.dep_code));
         const marker = L.circleMarker([lat, lon], {
-            radius, fillColor: color, color, weight: 1, fillOpacity: 0.55
+            radius,
+            fillColor: color,
+            color,
+            weight: 1,
+            fillOpacity: 0.55
         }).addTo(markersLayer);
 
-        marker.on("click", () => loadEstablishment(finess));
+        marker.on("click", () => {
+            import('./ui.js').then(module => module.loadEstablishment(finess));
+        });
+
         marker.bindPopup(`
             <strong>${s.raison_sociale}</strong><br>
             ${s.dep_name} (${s.dep_code})<br>
             ${s.categorie}<br>
-            <span style="color:#888">Journées : ${total.toLocaleString()}</span>
+            <span style="color:#888">Journées (Critère) : ${total.toLocaleString()}</span>
         `);
     });
 }
