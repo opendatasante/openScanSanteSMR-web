@@ -249,6 +249,8 @@ function refreshViews() {
         filteredSites[f] = mapping[f];
     });
 
+    updateMapMarkers(filteredSites);
+    
     if (currentView !== "map") return;
 
     const regVal = document.getElementById('filter-region').value;
