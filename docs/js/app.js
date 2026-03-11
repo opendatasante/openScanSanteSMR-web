@@ -248,11 +248,11 @@ function refreshViews() {
 
     if (currentView !== "map") return;
 
-    // Détection des filtres actifs
-    const noFilter =
-        !document.getElementById('filter-region').value &&
-        !document.getElementById('filter-dept').value &&
-        !document.getElementById('filter-sector').value;
+    const regVal = document.getElementById('filter-region').value;
+    const deptVal = document.getElementById('filter-dept').value;
+    const sectorVal = document.getElementById('filter-sector').value;
+
+    const noFilter = !regVal && !deptVal && !sectorVal;
 
     // Départements présents dans les données filtrées
     const filteredDepts = new Set(
@@ -270,7 +270,13 @@ function refreshViews() {
         return;
     }
 
-    // Cas 2 : un seul département → zoom dessus
+    // Cas 2 : région sélectionnée mais département = "Tous les départements"
+    if (regVal && !deptVal) {
+        fitMapToMarkers();
+        return;
+    }
+
+    // Cas 3 : un seul département → zoom dessus
     if (deptCount === 1) {
         const f = filteredFiness[0];
         const s = mapping[f];
@@ -285,7 +291,7 @@ function refreshViews() {
         return;
     }
 
-    // Cas 3 : plusieurs départements → zoom global
+    // Cas 4 : plusieurs départements → zoom global
     fitMapToMarkers();
 }
 
