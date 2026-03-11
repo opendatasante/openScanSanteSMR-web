@@ -289,7 +289,7 @@ function refreshViews() {
             String(s.dep_code)
         );
 
-        map.setView([lat, lon], 9);
+        map.flyTo([lat, lon], 9, { duration: 0.8 });
         return;
     }
 
@@ -394,7 +394,7 @@ function projectDOMCoordinates(lat, lon, depCode) {
 
 function fitMapToMarkers() {
     const bounds = markersLayer.getBounds();
-    if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30] });
+    if (bounds.isValid()) map.flyToBounds(bounds, { padding: [30, 30], duration: 0.8 });
 }
 
 function updateMapMarkers(sites) {
