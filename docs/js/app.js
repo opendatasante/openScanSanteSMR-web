@@ -81,7 +81,7 @@ async function init() {
             pageLength: 15,
             dom: '<"top"f>rt<"bottom"lip><"clear">'
         });
-S
+
         table.on('draw', function () {
             if (currentView === "map") {
                 refreshViews();
