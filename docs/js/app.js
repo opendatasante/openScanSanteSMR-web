@@ -57,7 +57,7 @@ async function init() {
         populateFilters();
 
         // 3. Calculer les statistiques globales pour le dashboard
-        updateGlobalStats();
+        // updateGlobalStats();
 
         // 4. Préparer les données pour DataTables
         const tableData = Object.entries(mapping).map(([finess, info]) => [
@@ -83,8 +83,10 @@ async function init() {
         });
 
         table.on('draw', function () {
+            updateGlobalStats();   // stats toujours à jour
+        
             if (currentView === "map") {
-                refreshViews();
+                refreshViews();    // carte toujours à jour
             }
         });
 
