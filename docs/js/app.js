@@ -81,6 +81,13 @@ async function init() {
             pageLength: 15,
             dom: '<"top"f>rt<"bottom"lip><"clear">'
         });
+S
+        table.on('draw', function () {
+            if (currentView === "map") {
+                refreshViews();
+            }
+        });
+
 
         // 6. Événement clic sur ligne
         $('#main-table tbody').on('click', 'tr', function () {
@@ -231,10 +238,6 @@ function applyFilters(event) {
 
     // Update Stats based on filtered data
     updateGlobalStats();
-
-    if (currentView === "map") {
-        refreshViews();
-    }
 }
 
 function refreshViews() {
