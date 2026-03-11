@@ -276,7 +276,7 @@ function refreshViews() {
     }
 
     // Cas 2 : région sélectionnée mais département = "Tous les départements"
-    if (regVal && !deptVal) {
+    if (regVal && (!deptVal || deptVal.trim() === "")) {
         fitMapToMarkers();
         return;
     }
