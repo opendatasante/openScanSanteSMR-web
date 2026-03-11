@@ -209,25 +209,24 @@ function updateDeptFilter() {
 }
 
 function applyFilters(event) {
-    const regVal = document.getElementById('filter-region').value;
-    const deptVal = document.getElementById('filter-dept').value;
-    const sectorVal = document.getElementById('filter-sector').value;
+    const regionSelect = document.getElementById('filter-region');
+    const deptSelect = document.getElementById('filter-dept');
+    const sectorSelect = document.getElementById('filter-sector');
 
-    // Handle dependency: if region changes, update depts
+    // Si la région change → on met à jour les départements
     if (event && event.target && event.target.id === 'filter-region') {
         updateDeptFilter();
-        document.getElementById('filter-dept').value = "";
+        deptSelect.value = ""; // 🔥 IMPORTANT : reset du filtre département
     }
 
-    // Apply filtering to DataTables
-    // Col 2: Dept (index 2)
-    // Col 3: Region (index 3)
-    // Col 4: Categorie (index 4)
+    const regVal = regionSelect.value;
+    const deptVal = deptSelect.value;
+    const sectorVal = sectorSelect.value;
 
+    // Application des filtres DataTables
     table.column(3).search(regVal);
 
     if (deptVal) {
-        // Use exact match for dept since we have "01 - AIN" and might have "01 - AIN..."
         table.column(2).search('^' + deptVal.replace(/-/g, '\\-') + '$', true, false);
     } else {
         table.column(2).search('');
@@ -236,9 +235,6 @@ function applyFilters(event) {
     table.column(4).search(sectorVal);
 
     table.draw();
-
-    // Update Stats based on filtered data
-    updateGlobalStats();
 }
 
 function refreshViews() {
