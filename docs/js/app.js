@@ -249,8 +249,9 @@ function refreshViews() {
         filteredSites[f] = mapping[f];
     });
 
+    // 🔥 Toujours mettre à jour les marqueurs UNE SEULE FOIS
     updateMapMarkers(filteredSites);
-    
+
     if (currentView !== "map") return;
 
     const regVal = document.getElementById('filter-region').value;
@@ -259,15 +260,11 @@ function refreshViews() {
 
     const noFilter = !regVal && !deptVal && !sectorVal;
 
-    // Départements présents dans les données filtrées
     const filteredDepts = new Set(
         filteredFiness.map(f => String(mapping[f].dep_code))
     );
 
     const deptCount = filteredDepts.size;
-
-    // Toujours mettre à jour les marqueurs
-    updateMapMarkers(filteredSites);
 
     // Cas 1 : aucun filtre → vue France
     if (noFilter) {
