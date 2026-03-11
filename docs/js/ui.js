@@ -28,6 +28,12 @@ export function populateFilters() {
 
     // Departments are populated based on region selection
     updateDeptFilter();
+
+    // Initialize Select2 for top-level filters
+    $('#filter-region, #filter-dept, #filter-sector').select2({
+        width: '100%',
+        minimumResultsForSearch: 10 // Only show search if many options
+    });
 }
 
 export function applyFilters(event) {
@@ -59,6 +65,9 @@ export function applyFilters(event) {
 
     // 5. On met à jour les stats et la carte
     updateGlobalStats();
+
+    // 5b. Force Select2 update for Dept if it was hidden/cleared
+    $('#filter-dept').trigger('change.select2');
 
     if (state.currentView === "map") {
         refreshViews();
@@ -359,14 +368,27 @@ window.showIndicatorTrend = function (field, label, unit) {
     titleEl.textContent = `Évolution de l'indicateur ${label} (${unit})`;
     section.style.display = 'block';
 
+    const filters = window.currentMedicalFilters || { selCms: [], selGns: [], selGmes: [], hasFilter: false };
+
     const seriesData = pd.labels.map(p => {
         let wSum = 0, wDays = 0;
-        Object.entries(pd.rawData[p] || {}).forEach(([k, gns]) => {
-            if (k === 'total') return;
-            Object.values(gns || {}).forEach(gmes => {
-                Object.values(gmes || {}).forEach(code => {
+        const periodData = pd.rawData[p] || {};
+
+        Object.entries(periodData).forEach(([catMaj, gns]) => {
+            if (catMaj === 'total') return;
+            if (filters.selCms.length > 0 && !filters.selCms.includes(catMaj)) return;
+
+            Object.entries(gns || {}).forEach(([gnId, gmes]) => {
+                if (filters.selGns.length > 0 && !filters.selGns.includes(gnId)) return;
+
+                Object.entries(gmes || {}).forEach(([gmeId, code]) => {
+                    if (filters.selGmes.length > 0 && !filters.selGmes.includes(gmeId)) return;
+
                     const val = parseFloat(code[field]);
-                    const days = (parseInt(code.nb_journees_hc) || 0) + (parseInt(code.nb_journees_hp) || 0);
+                    const hc = parseInt(code.nb_journees_hc) || 0;
+                    const hp = parseInt(code.nb_journees_hp) || 0;
+                    const days = hc + hp;
+
                     if (!isNaN(val) && days > 0) {
                         wSum += val * days;
                         wDays += days;
@@ -374,6 +396,7 @@ window.showIndicatorTrend = function (field, label, unit) {
                 });
             });
         });
+
         return wDays > 0 ? parseFloat((wSum / wDays).toFixed(2)) : null;
     });
 
@@ -445,6 +468,15 @@ function updateDeptFilter() {
 function renderDetails(data) {
     const periodes = Object.keys(data.periodes || {}).sort();
 
+    // Get active filters
+    const selCms = $('#filter-cm').val() || [];
+    const selGns = $('#filter-gn').val() || [];
+    const selGmes = $('#filter-gme').val() || [];
+    const hasFilter = selCms.length > 0;
+
+    // Store globally for indicator trend usage
+    window.currentMedicalFilters = { selCms, selGns, selGmes, hasFilter };
+
     // Reset optional panels when switching establishments
     document.getElementById('indicator-trend-section').style.display = 'none';
     document.getElementById('profiling-section').style.display = 'none';
@@ -458,7 +490,8 @@ function renderDetails(data) {
         <span class="badge" style="background: rgba(139, 92, 246, 0.1); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.2);">Historique : ${data.sources?.length || 0} fichiers</span>
     </div>
 `;
-    document.getElementById('det-name').textContent = data.raison_sociale || "Établissement inconnu";
+    const baseTitle = data.raison_sociale || "Établissement inconnu";
+    document.getElementById('det-name').textContent = hasFilter ? `📉 ${baseTitle} (Filtré)` : baseTitle;
 
     if (periodes.length > 0) {
         const labels = periodes;
@@ -466,10 +499,13 @@ function renderDetails(data) {
         // Compute per-period totals: total, HC, HP
         const sumForPeriod = (p, field) => {
             let total = 0;
-            Object.entries(data.periodes[p] || {}).forEach(([k, gns]) => {
-                if (k === 'total') return;
-                Object.values(gns || {}).forEach(gmes => {
-                    Object.values(gmes || {}).forEach(code => {
+            Object.entries(data.periodes[p] || {}).forEach(([catMaj, gns]) => {
+                if (catMaj === 'total') return;
+                if (selCms.length > 0 && !selCms.includes(catMaj)) return;
+                Object.entries(gns || {}).forEach(([gnId, gmes]) => {
+                    if (selGns.length > 0 && !selGns.includes(gnId)) return;
+                    Object.entries(gmes || {}).forEach(([gmeId, code]) => {
+                        if (selGmes.length > 0 && !selGmes.includes(gmeId)) return;
                         const val = parseInt(code[field]);
                         if (!isNaN(val)) total += val;
                     });
@@ -503,14 +539,18 @@ function renderDetails(data) {
 
         Object.entries(data.periodes[lastP] || {}).forEach(([catMaj, gns]) => {
             if (catMaj === 'total') return; // Do not treat the official totals as a medical category
+            if (selCms.length > 0 && !selCms.includes(catMaj)) return;
+
             let catTotal = 0;
             fullBreakdown[catMaj] = { total: 0, gns: {}, wAge: 0, dAge: 0, wSexe: 0, dSexe: 0, wAvqp: 0, dAvqp: 0, wAvqr: 0, dAvqr: 0, wCsarr: 0, sCsarr: 0 };
 
             Object.entries(gns || {}).forEach(([gnId, gmes]) => {
+                if (selGns.length > 0 && !selGns.includes(gnId)) return;
                 let gnTotal = 0;
                 fullBreakdown[catMaj].gns[gnId] = { total: 0, gmes: {}, wAge: 0, dAge: 0, wSexe: 0, dSexe: 0, wAvqp: 0, dAvqp: 0, wAvqr: 0, dAvqr: 0, wCsarr: 0, sCsarr: 0 };
 
                 Object.entries(gmes || {}).forEach(([gmeId, code]) => {
+                    if (selGmes.length > 0 && !selGmes.includes(gmeId)) return;
                     const c_hc = parseInt(code.nb_journees_hc) || 0;
                     const c_hp = parseInt(code.nb_journees_hp) || 0;
                     const days = c_hc + c_hp;
@@ -598,7 +638,9 @@ function renderDetails(data) {
 
         const compare = (calc, off, unit = "") => {
             const unitHtml = unit ? ` ${unit.trim()}` : '';
-            if (!off) return { text: `${calc}${unitHtml}`, match: true };
+            // If the view is filtered, we don't compare with official global totals
+            if (hasFilter || !off) return { text: `${calc}${unitHtml}`, match: true };
+
             const c = parseFloat(calc.toString().replace(/\s/g, ''));
             const o = parseFloat(off.toString().replace(/\s/g, ''));
             const diff = Math.abs(c - o);
@@ -662,11 +704,11 @@ function renderDetails(data) {
         // Generic stat tooltip generator
         const buildInfoTooltip = (title, age, sexe, avqp, avqr, csarr) => {
             let parts = [];
-            if (age && age !== "N/A" && !isNaN(parseFloat(age))) parts.push(`Âge moyen: ${parseFloat(age).toFixed(1)} ans (Moy. Globale: ${avgAge})`);
-            if (sexe && sexe !== "N/A" && !isNaN(parseFloat(sexe))) parts.push(`Sexe Ratio: ${parseFloat(sexe).toFixed(1)}% H (Moy. Globale: ${avgSexe})`);
-            if (avqp && avqp !== "N/A" && !isNaN(parseFloat(avqp))) parts.push(`AVQ Physique: ${parseFloat(avqp).toFixed(2)} /4 (Moy. Globale: ${avgAVQP})`);
-            if (avqr && avqr !== "N/A" && !isNaN(parseFloat(avqr))) parts.push(`AVQ Relationnel: ${parseFloat(avqr).toFixed(2)} /4 (Moy. Globale: ${avgAVQR})`);
-            if (csarr && csarr !== "N/A" && !isNaN(parseFloat(csarr))) parts.push(`Actes CSARR: ${parseFloat(csarr).toFixed(2)} /j. (Moy. Globale: ${avgCSARR})`);
+            if (age && age !== "N/A" && !isNaN(parseFloat(age))) parts.push(`Âge moyen: ${parseFloat(age).toFixed(1)} ans (Moyenne: ${avgAge})`);
+            if (sexe && sexe !== "N/A" && !isNaN(parseFloat(sexe))) parts.push(`Sexe Ratio: ${parseFloat(sexe).toFixed(1)}% H (Moyenne: ${avgSexe})`);
+            if (avqp && avqp !== "N/A" && !isNaN(parseFloat(avqp))) parts.push(`AVQ Physique: ${parseFloat(avqp).toFixed(2)} /4 (Moyenne: ${avgAVQP})`);
+            if (avqr && avqr !== "N/A" && !isNaN(parseFloat(avqr))) parts.push(`AVQ Relationnel: ${parseFloat(avqr).toFixed(2)} /4 (Moyenne: ${avgAVQR})`);
+            if (csarr && csarr !== "N/A" && !isNaN(parseFloat(csarr))) parts.push(`Actes CSARR: ${parseFloat(csarr).toFixed(2)} /j. (Moyenne: ${avgCSARR})`);
             if (parts.length === 0) return '';
             return `<span title="Indicateurs de profil pour '${title.replace(/"/g, '&quot;')}':&#10;${parts.join('&#10;')}" style="cursor:help; font-size: 0.9em; vertical-align: middle; filter: grayscale(1); opacity: 0.6; margin-left: 0.3rem;">ℹ️</span>`;
         };
@@ -837,82 +879,101 @@ export function updateChart(labels, dataArr, hcArr, hpArr) {
 import { fetchMapActivityData } from './api.js'; // Assurez-vous d'importer la nouvelle fonction en haut du fichier !
 
 export function initActivityFilters() {
-    const cmSelect = document.getElementById('filter-cm');
-    const gnSelect = document.getElementById('filter-gn');
-    const gmeSelect = document.getElementById('filter-gme');
+    const $cm = $('#filter-cm');
+    const $gn = $('#filter-gn');
+    const $gme = $('#filter-gme');
 
-    // Remplir les CM
+    // 1. Initialisation Select2 (Design moderne avec recherche intégrée)
+    $cm.select2({ placeholder: "Rechercher ou sélectionner des CM...", width: '100%', allowClear: true });
+    $gn.select2({ placeholder: "Rechercher un GN...", width: '100%', allowClear: true });
+    $gme.select2({ placeholder: "Rechercher un GME...", width: '100%', allowClear: true });
+
+    // 2. On remplit les CM au démarrage
     state.optionsTree.forEach(cm => {
-        cmSelect.add(new Option(`${cm.value} - ${cm.text.substring(0, 40)}...`, cm.value));
+        $cm.append(new Option(`${cm.value} - ${cm.text}`, cm.value));
     });
 
-    cmSelect.addEventListener('change', async () => {
-        const cmVal = cmSelect.value;
-        gnSelect.innerHTML = '<option value="">Tous les GN de cette CM</option>';
-        gmeSelect.innerHTML = '<option value="">Tous les GME</option>';
+    // 3. Événement : Changement de sélection sur les CM
+    $cm.on('change', async () => {
+        const cmVals = $cm.val() || []; // Retourne un tableau des CM sélectionnées
+        $gn.empty();
+        $gme.empty();
 
-        if (cmVal) {
-            const cmNode = state.optionsTree.find(c => c.value === cmVal);
-            if (cmNode) {
+        if (cmVals.length > 0) {
+            // On filtre l'arbre pour ne garder que les CM sélectionnées
+            state.optionsTree.filter(c => cmVals.includes(c.value)).forEach(cmNode => {
                 (cmNode.groupes_nosologiques || []).forEach(gn => {
-                    gnSelect.add(new Option(`${gn.value} - ${gn.text.substring(0, 40)}...`, gn.value));
+                    $gn.append(new Option(`${gn.value} - ${gn.text}`, gn.value));
                 });
-            }
+            });
             document.getElementById('group-filter-gn').style.display = 'flex';
         } else {
             document.getElementById('group-filter-gn').style.display = 'none';
             document.getElementById('group-filter-gme').style.display = 'none';
         }
+
+        // On prévient Select2 que les options internes ont changé
+        $gn.trigger('change.select2');
+        $gme.trigger('change.select2');
+
         await applyActivityFilter();
     });
 
-    gnSelect.addEventListener('change', async () => {
-        const cmVal = cmSelect.value;
-        const gnVal = gnSelect.value;
-        gmeSelect.innerHTML = '<option value="">Tous les GME de ce GN</option>';
+    // 4. Événement : Changement de sélection sur les GN
+    $gn.on('change', async () => {
+        const cmVals = $cm.val() || [];
+        const gnVals = $gn.val() || []; // Retourne un tableau des GN sélectionnés
 
-        if (gnVal) {
-            const cmNode = state.optionsTree.find(c => c.value === cmVal);
-            const gnNode = cmNode?.groupes_nosologiques.find(g => g.value === gnVal);
-            if (gnNode) {
-                (gnNode.groupes_medico_economiques || []).forEach(gme => {
-                    gmeSelect.add(new Option(`${gme.value} - ${gme.text.substring(0, 40)}...`, gme.value));
+        $gme.empty();
+
+        if (gnVals.length > 0) {
+            // On retrouve les CM sélectionnées
+            state.optionsTree.filter(c => cmVals.includes(c.value)).forEach(cmNode => {
+                // Dans ces CM, on retrouve les GN sélectionnés
+                const selectedGnNodes = (cmNode.groupes_nosologiques || []).filter(g => gnVals.includes(g.value));
+
+                // Pour chaque GN trouvé, on ajoute ses GME
+                selectedGnNodes.forEach(gnNode => {
+                    (gnNode.groupes_medico_economiques || []).forEach(gme => {
+                        $gme.append(new Option(`${gme.value} - ${gme.text}`, gme.value));
+                    });
                 });
-            }
+            });
             document.getElementById('group-filter-gme').style.display = 'flex';
         } else {
             document.getElementById('group-filter-gme').style.display = 'none';
         }
+
+        // On prévient Select2 que les options internes ont changé
+        $gme.trigger('change.select2');
+
         await applyActivityFilter();
     });
 
-    gmeSelect.addEventListener('change', applyActivityFilter);
+    // 5. Événement : Changement de sélection sur les GME
+    $gme.on('change', async () => {
+        await applyActivityFilter();
+    });
 }
 
 async function applyActivityFilter() {
-    const cm = document.getElementById('filter-cm').value;
-    const gn = document.getElementById('filter-gn').value;
-    const gme = document.getElementById('filter-gme').value;
+    const cm = $('#filter-cm').val();
+    const gn = $('#filter-gn').val();
+    const gme = $('#filter-gme').val();
 
-    if (!cm) {
+    if (!cm || (Array.isArray(cm) && cm.length === 0)) {
         state.mapCustomData = null; // Retour à la vue globale
     } else {
         // Indication visuelle du chargement
         document.body.style.cursor = 'wait';
-        document.getElementById('btn-map').textContent = "Calcul en cours...";
+        const mapBtn = document.getElementById('btn-map');
+        const originalText = mapBtn.textContent;
+        mapBtn.textContent = "Calcul en cours...";
 
         state.mapCustomData = await fetchMapActivityData(cm, gn, gme);
 
         document.body.style.cursor = 'default';
-        document.getElementById('btn-map').textContent = "Carte";
-    }
-
-    if (!cm) {
-        state.mapCustomData = null;
-    } else {
-        document.body.style.cursor = 'wait';
-        state.mapCustomData = await fetchMapActivityData(cm, gn, gme);
-        document.body.style.cursor = 'default';
+        mapBtn.textContent = originalText;
     }
 
     if (state.table) {

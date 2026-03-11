@@ -9,8 +9,9 @@
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" type="text/css"
         href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
@@ -102,19 +103,19 @@
                 <div class="filter-group">
                     <label class="filter-label" style="color: var(--primary-light);">Catégorie Majeure
                         (Activité)</label>
-                    <select id="filter-cm" class="filter-select">
+                    <select id="filter-cm" class="filter-select" multiple="multiple">
                         <option value="">Activité globale (Toutes pathologies)</option>
                     </select>
                 </div>
                 <div class="filter-group" id="group-filter-gn" style="display: none;">
                     <label class="filter-label" style="color: var(--primary-light);">Groupe Nosologique</label>
-                    <select id="filter-gn" class="filter-select">
+                    <select id="filter-gn" class="filter-select" multiple="multiple">
                         <option value="">Tous les GN</option>
                     </select>
                 </div>
                 <div class="filter-group" id="group-filter-gme" style="display: none;">
                     <label class="filter-label" style="color: var(--primary-light);">GME</label>
-                    <select id="filter-gme" class="filter-select">
+                    <select id="filter-gme" class="filter-select" multiple="multiple">
                         <option value="">Tous les GME</option>
                     </select>
                 </div>
@@ -202,6 +203,7 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script type="module" src="js/main.js"></script>

@@ -59,16 +59,21 @@ export async function fetchLatestUpdateDate() {
     }
 }
 
-export async function fetchMapActivityData(selectedCm, selectedGn, selectedGme) {
+export async function fetchMapActivityData(selectedCms, selectedGns, selectedGmes) {
     let paths = [];
+
+    // On s'assure que ce sont bien des tableaux (arrays)
+    const cms = Array.isArray(selectedCms) ? selectedCms : (selectedCms ? [selectedCms] : []);
+    const gns = Array.isArray(selectedGns) ? selectedGns : (selectedGns ? [selectedGns] : []);
+    const gmes = Array.isArray(selectedGmes) ? selectedGmes : (selectedGmes ? [selectedGmes] : []);
 
     // On parcourt l'arbre pour trouver tous les GME qui correspondent au filtre
     state.optionsTree.forEach(cm => {
-        if (selectedCm && cm.value !== selectedCm) return;
+        if (cms.length > 0 && !cms.includes(cm.value)) return;
         (cm.groupes_nosologiques || []).forEach(gn => {
-            if (selectedGn && gn.value !== selectedGn) return;
+            if (gns.length > 0 && !gns.includes(gn.value)) return;
             (gn.groupes_medico_economiques || []).forEach(gme => {
-                if (selectedGme && gme.value !== selectedGme) return;
+                if (gmes.length > 0 && !gmes.includes(gme.value)) return;
                 paths.push({ cm: cm.value, gn: gn.value, gme: gme.value });
             });
         });
