@@ -180,10 +180,15 @@ function renderComparison(allData) {
     allData.forEach(d => {
         const lastP = Object.keys(d.periodes).sort().pop();
         const pData = d.periodes[lastP] || {};
+        const meta = state.mapping[d.finess];
 
+        let totalDays = 0;
+        let totalHC = 0; let totalHP = 0;
         let wSumAge = 0, wDaysAge = 0;
         let wSumSexe = 0, wDaysSexe = 0;
-        let totalDays = 0;
+        let wSumAvqp = 0, wDaysAvqp = 0;
+        let wSumAvqr = 0, wDaysAvqr = 0;
+        let wSumCsarr = 0, wDaysCsarr = 0;
 
         Object.entries(pData).forEach(([catMaj, gns]) => {
             if (catMaj === 'total') return;
@@ -195,10 +200,23 @@ function renderComparison(allData) {
                     const days = (parseInt(code.nb_journees_hc) || 0) + (parseInt(code.nb_journees_hp) || 0);
                     if (days > 0) {
                         totalDays += days;
+                        const hc = parseInt(code.nb_journees_hc) || 0;
+                        const hp = parseInt(code.nb_journees_hp) || 0;
+                        totalHC += hc;
+                        totalHP += hp;
                         const age = parseFloat(code.age_moyen);
                         if (!isNaN(age)) { wSumAge += age * days; wDaysAge += days; }
                         const sexe = parseFloat(code.sexe_ratio);
                         if (!isNaN(sexe)) { wSumSexe += sexe * days; wDaysSexe += days; }
+                        const avqp = parseFloat(code.avq_physique);
+                        if (!isNaN(avqp)) { wSumAvqp += avqp * days; wDaysAvqp += days; }
+
+                        const avqr = parseFloat(code.avq_relationnel);
+                        if (!isNaN(avqr)) { wSumAvqr += avqr * days; wDaysAvqr += days; }
+
+                        const csarr = parseFloat(code.nb_actes_csarr);
+                        if (!isNaN(csarr)) { wSumCsarr += csarr * days; wDaysCsarr += days; }
+
                     }
                 });
             });
@@ -206,12 +224,25 @@ function renderComparison(allData) {
 
         const avgAge = wDaysAge > 0 ? (wSumAge / wDaysAge).toFixed(1) : "N/A";
         const avgSexe = wDaysSexe > 0 ? (wSumSexe / wDaysSexe).toFixed(1) : "N/A";
+        const avgAvqp = wDaysAvqp > 0 ? (wSumAvqp / wDaysAvqp).toFixed(2) : "N/A";
+        const avgAvqr = wDaysAvqr > 0 ? (wSumAvqr / wDaysAvqr).toFixed(2) : "N/A";
+        const avgCsarr = wDaysCsarr > 0 ? (wSumCsarr / wDaysCsarr).toFixed(2) : "N/A";
+
 
         html += `
             <div class="stat-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);">
-                <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.8rem; color: var(--primary-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${d.raison_sociale}">
+                <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.8rem; color: var(--primary-light);" 
+                    title="${d.raison_sociale}">
                     ${d.raison_sociale}
                 </div>
+
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.6rem;">
+                    <strong>FINESS :</strong> ${d.finess}<br>
+                    <strong>Type :</strong> ${meta.categorie || "N/A"}<br>
+                    <strong>Région :</strong> ${meta.reg_name || "N/A"}<br>
+                    <strong>Département :</strong> ${meta.dep_name} (${meta.dep_code})<br>
+                </div>
+
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
                     <span style="font-size: 0.8rem; color: var(--text-muted);">Âge Moyen</span>
                     <span style="font-weight: 600;">${avgAge} ans</span>
@@ -220,10 +251,32 @@ function renderComparison(allData) {
                     <span style="font-size: 0.8rem; color: var(--text-muted);">Sexe Ratio</span>
                     <span style="font-weight: 600;">${avgSexe}% H</span>
                 </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">AVQ physique</span>
+                    <span style="font-weight: 600;">${avgAvqp}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">AVQ relationnel</span>
+                    <span style="font-weight: 600;">${avgAvqr}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Actes CSARR</span>
+                    <span style="font-weight: 600;">${avgCsarr}</span>
+                </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,255,255,0.05);">
                     <span style="font-size: 0.8rem; color: var(--text-muted);">Activité</span>
                     <span style="font-weight: 600; color: var(--primary-light);">${totalDays.toLocaleString()} j.</span>
                 </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 0.3rem;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">HC</span>
+                    <span style="font-weight: 600; color: var(--primary-light);">${totalHC.toLocaleString()} j.</span>
+                </div>
+
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">HP</span>
+                    <span style="font-weight: 600; color: var(--primary-light);">${totalHP.toLocaleString()} j.</span>
+                </div>
+
             </div>
         `;
     });
@@ -500,7 +553,7 @@ window.updateProfileChart = function () {
                             const idx = context.dataIndex;
                             const sel = [sAge, sSexe, sAvqp, sAvqr, sCsarr][idx];
                             const globV = [gAge, gSexe, gAvqp, gAvqr, gCsarr][idx];
-                            return `${val} (Sélection: ${sel} vs Global: ${globV})`;
+                            return `${val} (Profil: ${sel} vs Global/Filtre: ${globV})`;
                         }
                     }
                 },
@@ -872,8 +925,8 @@ export function renderDetails(data) {
 
 
         // Render Activity Breakdown Hierarchical
-        let breakdownHtml = '<div style="margin-top: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px; padding: 1rem; border: 1px solid rgba(255,255,255,0.05);">';
-        // breakdownHtml += '<h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; color: var(--primary-light);">Détail de l\'Activité (CM > GN > GME)</h4>';
+        let breakdownHtml = ''
+        // let breakdownHtml = '<div style="margin-top: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px; padding: 1rem; border: 1px solid rgba(255,255,255,0.05);">';
 
         const sortedCMs = Object.entries(fullBreakdown).sort((a, b) => b[1].total - a[1].total);
 
@@ -966,7 +1019,7 @@ export function renderDetails(data) {
         } else {
             breakdownHtml += '<p style="font-size: 0.8rem; color: var(--text-muted);">Aucune donnée détaillée disponible.</p>';
         }
-        breakdownHtml += '</div>';
+        // breakdownHtml += '</div>';
 
         document.getElementById('det-raw').innerHTML = breakdownHtml;
     } else {
@@ -1039,7 +1092,7 @@ export async function initActivityFilters() {
     const $gme = $('#filter-gme');
 
     // 1. Initialisation Select2 (Design moderne avec recherche intégrée)
-    $cm.select2({ placeholder: "Rechercher ou sélectionner des CM...", width: '100%', allowClear: true });
+    $cm.select2({ placeholder: "Rechercher une CM...", width: '100%', allowClear: true });
     $gn.select2({ placeholder: "Rechercher un GN...", width: '100%', allowClear: true });
     $gme.select2({ placeholder: "Rechercher un GME...", width: '100%', allowClear: true });
 

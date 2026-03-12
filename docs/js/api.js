@@ -67,23 +67,42 @@ export async function fetchMapActivityData(selectedCms, selectedGns, selectedGme
     const gns = Array.isArray(selectedGns) ? selectedGns : (selectedGns ? [selectedGns] : []);
     const gmes = Array.isArray(selectedGmes) ? selectedGmes : (selectedGmes ? [selectedGmes] : []);
 
-    // On parcourt l'arbre pour trouver tous les GME qui correspondent au filtre
+    // On parcourt l'arbre pour déterminer les chemins optimaux
     state.optionsTree.forEach(cm => {
+        // Si des CM sont sélectionnées et que celle-ci n'y est pas, on l'ignore
         if (cms.length > 0 && !cms.includes(cm.value)) return;
+
+        // OPTIMISATION 1 : Si aucun filtre GN ni GME n'est actif, on prend directement le fichier de la CM
+        if (gns.length === 0 && gmes.length === 0) {
+            paths.push(`${cm.value}`); // Ex: "01"
+            return; // On passe à la CM suivante sans explorer ses enfants
+        }
+
         (cm.groupes_nosologiques || []).forEach(gn => {
+            // Si des GN sont sélectionnés et que celui-ci n'y est pas, on l'ignore
             if (gns.length > 0 && !gns.includes(gn.value)) return;
+
+            // OPTIMISATION 2 : Si aucun filtre GME n'est actif, on prend directement le fichier du GN
+            if (gmes.length === 0) {
+                paths.push(`${cm.value}/${gn.value}`); // Ex: "01/01C"
+                return; // On passe au GN suivant sans explorer ses GME
+            }
+
             (gn.groupes_medico_economiques || []).forEach(gme => {
+                // Si des GME sont sélectionnés et que celui-ci n'y est pas, on l'ignore
                 if (gmes.length > 0 && !gmes.includes(gme.value)) return;
-                paths.push({ cm: cm.value, gn: gn.value, gme: gme.value });
+
+                // Niveau le plus bas : on prend le fichier du GME spécifique
+                paths.push(`${cm.value}/${gn.value}/${gme.value}`); // Ex: "01/01C/01C031"
             });
         });
     });
 
     const customData = {};
 
-    // On lance tous les téléchargements en parallèle (très rapide grâce au CDN)
-    const promises = paths.map(p =>
-        fetch(`${config.cdnPrefix}data/restitutions/${p.cm}/${p.gn}/${p.gme}/latest.json`)
+    // On lance tous les téléchargements en parallèle en ajoutant simplement "/latest.json" à nos chemins
+    const promises = paths.map(pathStr =>
+        fetch(`${config.cdnPrefix}data/restitutions/${pathStr}/latest.json`)
             .then(r => r.ok ? r.json() : null)
             .catch(() => null)
     );

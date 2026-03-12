@@ -105,13 +105,35 @@ function fitMapToMarkers() {
 }
 
 function projectDOMCoordinates(lat, lon, depCode) {
+    return { lat, lon };
+    // 1. S'assurer que l'on manipule bien des nombres
+    const l_lat = parseFloat(lat);
+    const l_lon = parseFloat(lon);
+
+    // Sécurité si les coordonnées sont absentes
+    if (isNaN(l_lat) || isNaN(l_lon)) return { lat, lon };
+
+    // 2. Appliquer un décalage (offset) pour rapprocher les DOM de la métropole
+    // Centre de la France : ~ Lat 46.0, Lon 2.0
     switch (depCode) {
-        case "971": return { lat: 43.5, lon: -6.0 };
-        case "972": return { lat: 43.0, lon: -6.0 };
-        case "973": return { lat: 42.5, lon: -6.0 };
-        case "974": return { lat: 43.0, lon: 10.0 };
-        case "976": return { lat: 42.5, lon: 10.0 };
-        default: return { lat, lon };
+        case "9A": // Guadeloupe (On la place à l'Ouest, dans l'océan Atlantique)
+            return { lat: l_lat + 29.7, lon: l_lon + 53.5 };
+
+        case "9B": // Martinique (Juste en dessous de la Guadeloupe)
+            return { lat: l_lat + 29.8, lon: l_lon + 53.0 };
+
+        case "9C": // Guyane (Encore en dessous, Sud-Ouest)
+            return { lat: l_lat + 38.5, lon: l_lon + 45.1 };
+
+        case "9D": // La Réunion (On la place à l'Est, sous la Corse)
+            return { lat: l_lat + 62.6, lon: l_lon - 45.5 };
+
+        case "9F": // Mayotte (Juste au-dessus de la Réunion)
+            return { lat: l_lat + 55.8, lon: l_lon - 35.1 };
+
+        default:
+            // Pour la métropole, on ne change rien
+            return { lat: l_lat, lon: l_lon };
     }
 }
 

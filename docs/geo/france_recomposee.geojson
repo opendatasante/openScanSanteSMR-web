@@ -1,0 +1,293 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "code": "01",
+                "nom": "Ain"
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [
+                                5.5,
+                                46.4
+                            ],
+                            [
+                                5.6,
+                                46.1
+                            ],
+                            [
+                                5.2,
+                                46.0
+                            ],
+                            [
+                                5.1,
+                                46.3
+                            ],
+                            [
+                                5.5,
+                                46.4
+                            ]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "code": "2A",
+                "nom": "Corse-du-Sud"
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [
+                                8.8,
+                                41.9
+                            ],
+                            [
+                                9.2,
+                                41.6
+                            ],
+                            [
+                                8.9,
+                                41.4
+                            ],
+                            [
+                                8.5,
+                                41.7
+                            ],
+                            [
+                                8.8,
+                                41.9
+                            ]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "code": "2B",
+                "nom": "Haute-Corse"
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [
+                                9.3,
+                                42.8
+                            ],
+                            [
+                                9.5,
+                                42.4
+                            ],
+                            [
+                                9.1,
+                                42.2
+                            ],
+                            [
+                                8.9,
+                                42.6
+                            ],
+                            [
+                                9.3,
+                                42.8
+                            ]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "code": "971",
+                "nom": "Guadeloupe"
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [
+                                9.0,
+                                39.0
+                            ],
+                            [
+                                9.4,
+                                38.7
+                            ],
+                            [
+                                9.2,
+                                38.4
+                            ],
+                            [
+                                8.8,
+                                38.6
+                            ],
+                            [
+                                9.0,
+                                39.0
+                            ]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "code": "972",
+                "nom": "Martinique"
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [
+                                9.6,
+                                38.0
+                            ],
+                            [
+                                9.9,
+                                37.7
+                            ],
+                            [
+                                9.7,
+                                37.4
+                            ],
+                            [
+                                9.4,
+                                37.6
+                            ],
+                            [
+                                9.6,
+                                38.0
+                            ]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "code": "973",
+                "nom": "Guyane"
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [
+                                8.5,
+                                36.5
+                            ],
+                            [
+                                9.2,
+                                36.3
+                            ],
+                            [
+                                9.0,
+                                35.8
+                            ],
+                            [
+                                8.3,
+                                36.0
+                            ],
+                            [
+                                8.5,
+                                36.5
+                            ]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "code": "974",
+                "nom": "La Réunion"
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [
+                                10.5,
+                                38.0
+                            ],
+                            [
+                                10.8,
+                                37.8
+                            ],
+                            [
+                                10.6,
+                                37.5
+                            ],
+                            [
+                                10.3,
+                                37.7
+                            ],
+                            [
+                                10.5,
+                                38.0
+                            ]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "code": "976",
+                "nom": "Mayotte"
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [
+                                10.7,
+                                36.8
+                            ],
+                            [
+                                11.0,
+                                36.6
+                            ],
+                            [
+                                10.8,
+                                36.3
+                            ],
+                            [
+                                10.5,
+                                36.5
+                            ],
+                            [
+                                10.7,
+                                36.8
+                            ]
+                        ]
+                    ]
+                ]
+            }
+        }
+    ]
+}

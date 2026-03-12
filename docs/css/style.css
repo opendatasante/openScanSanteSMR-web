@@ -246,7 +246,8 @@ table.dataTable tbody tr:hover {
     width: 80%;
 }
 
-.drawer-content {
+.drawer-content,
+#detail-content {
     padding: 2.5rem;
 }
 
