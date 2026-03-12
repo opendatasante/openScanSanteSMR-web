@@ -224,22 +224,30 @@ table.dataTable tbody tr:hover {
     border-radius: 6px !important;
 }
 
-/* Detail side panel */
-#detail-view {
-    display: none;
+/* Drawer (Détail & Comparaison) */
+#detail-view,
+.drawer {
     position: fixed;
     top: 0;
     right: 0;
-    width: 600px;
-    height: 100vh;
-    background: rgba(10, 15, 28, 0.95);
-    backdrop-filter: blur(30px);
-    border-left: 1px solid var(--border);
-    z-index: 1000;
-    padding: 2.5rem;
+    width: 50%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    display: none;
     overflow-y: auto;
-    box-shadow: -30px 0 60px rgba(0, 0, 0, 0.6);
+    border-left: 1px solid var(--border);
     animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#comparison-view {
+    width: 80%;
+}
+
+.drawer-content {
+    padding: 2.5rem;
 }
 
 @keyframes slideIn {
@@ -411,6 +419,97 @@ table.dataTable tbody tr:hover {
     color: var(--text);
 }
 
+/* Conteneur actions aligné à droite dans la barre de filtres */
+.filters-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    align-items: center;
+}
+
+/* Si .filters-actions est placé à l'intérieur de .filters-bar, pousse-le à droite */
+.filters-bar .filters-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    justify-self: end;
+}
+
+/* Variante compacte du bouton secondaire (réinitialiser) */
+.btn-secondary.compact,
+.btn.compact {
+    padding: 0.36rem 0.7rem;
+    font-size: 0.88rem;
+    border-radius: 10px;
+}
+
+/* Style par défaut si .btn est utilisé sans classe spécifique */
+.btn {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 0.45rem 0.8rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-weight: 600;
+}
+
+/* Hover / focus pour .btn */
+.btn:hover,
+.btn:focus {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(139, 92, 246, 0.25);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+/* Réutiliser .btn-secondary existant mais ajouter compact */
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 0.45rem 0.9rem;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.09);
+    color: var(--text);
+}
+
+/* Checkbox label styling inside actions */
+.filters-actions__toggle,
+.filters-actions label {
+    display: inline-flex;
+    gap: 0.45rem;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+/* Eviter chevauchement avec Select2 : petit espace à droite des selects */
+.filters-bar .select2-container {
+    margin-right: 0.25rem;
+}
+
+/* Responsive : sur petits écrans, empiler actions sous les selects */
+@media (max-width: 720px) {
+    .filters-bar {
+        grid-template-columns: 1fr;
+    }
+
+    .filters-bar .filters-actions {
+        margin-left: 0;
+        justify-content: flex-start;
+        padding-top: 0.5rem;
+    }
+}
+
+
 /* Légende Leaflet améliorée */
 .info.legend {
     background: rgba(255, 255, 255, 0.92);
@@ -447,6 +546,100 @@ table.dataTable tbody tr:hover {
     margin-left: 6px;
     font-size: 0.9rem;
     color: #222;
+}
+
+/* Barre de comparaison flottante */
+#comparison-bar {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(30, 41, 59, 0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--primary);
+    border-radius: 50px;
+    padding: 0.8rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    z-index: 1500;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translate(-50%, 100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+}
+
+.comparison-info {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+#comparison-count {
+    background: var(--primary);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 5px;
+}
+
+.comparison-actions {
+    display: flex;
+    gap: 0.8rem;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background: var(--primary-light);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1.2rem;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+}
+
+/* Checkbox Column Styling */
+#main-table td:first-child {
+    text-align: center;
+}
+
+input[type="checkbox"] {
+    accent-color: var(--primary);
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
 }
 
 /* --- Select2 Dark Theme Customization --- */
@@ -548,7 +741,8 @@ table.dataTable tbody tr:hover {
 /* Fix for hover over selected item - ensure text isn't "all white" on light background */
 .select2-container--default .select2-results__option--highlighted[aria-selected=true] {
     background-color: var(--primary-light) !important;
-    color: var(--bg) !important; /* Dark text for better contrast on lighter highlight */
+    color: var(--bg) !important;
+    /* Dark text for better contrast on lighter highlight */
 }
 
 /* Multi-select Tags (Badges) */

@@ -1,6 +1,6 @@
 // js/ui.js
 import { state, config } from './state.js';
-import { fetchHistory } from './api.js';
+import { fetchHistory, fetchMapActivityData } from './api.js';
 import { refreshViews } from './map.js';
 
 export function populateFilters() {
@@ -37,41 +37,199 @@ export function populateFilters() {
 }
 
 export function applyFilters(event) {
-    // 1. On lit d'abord la région et le secteur
     const regVal = document.getElementById('filter-region').value;
     const sectorVal = document.getElementById('filter-sector').value;
 
-    // 2. SI la région vient de changer, on met à jour la liste des départements
-    // (ce qui va réinitialiser le <select> sur "Tous les départements")
     if (event && event.target && event.target.id === 'filter-region') {
         updateDeptFilter();
     }
 
-    // 3. SEULEMENT MAINTENANT on lit la valeur du département !
-    // Comme ça, si la région a changé, deptVal vaudra bien "" (vide).
     const deptVal = document.getElementById('filter-dept').value;
 
-    // 4. On applique les filtres
-    state.table.column(3).search(regVal);
+    state.table.column(4).search(regVal);
 
     if (deptVal) {
-        state.table.column(2).search('^' + deptVal.replace(/-/g, '\\-') + '$', true, false);
+        state.table.column(3).search('^' + deptVal.replace(/-/g, '\\-') + '$', true, false);
     } else {
-        state.table.column(2).search('');
+        state.table.column(3).search('');
     }
 
-    state.table.column(4).search(sectorVal);
+    state.table.column(5).search(sectorVal);
     state.table.draw();
 
-    // 5. On met à jour les stats et la carte
     updateGlobalStats();
 
-    // 5b. Force Select2 update for Dept if it was hidden/cleared
     $('#filter-dept').trigger('change.select2');
 
     if (state.currentView === "map") {
         refreshViews();
     }
+
+    if (document.getElementById('comparison-view').style.display === 'block' && lastComparisonData) {
+        renderComparison(lastComparisonData);
+    }
+}
+
+// --- Multi-Establishment Comparison ---
+
+window.closeComparison = function () {
+    document.getElementById('comparison-view').style.display = 'none';
+};
+
+export async function openComparison() {
+    const selected = state.selectedFiness;
+    if (selected.length < 2) return;
+
+    document.getElementById('comparison-view').style.display = 'block';
+    const content = document.getElementById('comparison-indicators');
+    content.innerHTML = '<div style="color: var(--text-muted); padding: 2rem;">Chargement des données comparatives...</div>';
+
+    try {
+        // Parallel load of all selected establishments
+        const dataPromises = selected.map(async (finess) => {
+            const historyFiles = await fetchHistory(finess);
+            const filePromises = historyFiles.map(file => fetch(config.cdnPrefix + file).then(r => r.json()));
+            const allFilesData = await Promise.all(filePromises);
+
+            // Merge periods for this specific finess
+            let merged = { finess, raison_sociale: state.mapping[finess].reason_sociale || state.mapping[finess].raison_sociale, periodes: {} };
+            allFilesData.forEach(fileData => {
+                if (fileData.periodes) {
+                    Object.entries(fileData.periodes).forEach(([p, data]) => {
+                        merged.periodes[p] = data;
+                    });
+                }
+            });
+            return merged;
+        });
+
+        const allEstablishmentsData = await Promise.all(dataPromises);
+        lastComparisonData = allEstablishmentsData;
+        renderComparison(allEstablishmentsData);
+
+    } catch (err) {
+        console.error("Comparison Error:", err);
+        content.innerHTML = `<div style="color: #f87171; padding: 2rem;">Erreur: ${err.message}</div>`;
+    }
+}
+
+function renderComparison(allData) {
+    const filters = window.currentMedicalFilters || { selCms: [], selGns: [], selGmes: [], hasFilter: false };
+    const isFiltered = filters?.hasFilter === true;
+
+    // 1. Determine all unique periods across all establishments
+    const allLabels = [...new Set(allData.flatMap(d => Object.keys(d.periodes)))].sort();
+
+    // 2. Prepare datasets for activity chart
+    const chartDatasets = allData.map((d, idx) => {
+        const colors = ['#a78bfa', '#34d399', '#f59e0b', '#38bdf8', '#f43f5e', '#fbbf24'];
+        const color = colors[idx % colors.length];
+
+        return {
+            label: d.raison_sociale,
+            data: allLabels.map(p => {
+                let total = 0;
+                const pData = d.periodes[p] || {};
+                Object.entries(pData).forEach(([catMaj, gns]) => {
+                    if (catMaj === 'total') return;
+                    if (filters.selCms.length > 0 && !filters.selCms.includes(catMaj)) return;
+                    Object.entries(gns || {}).forEach(([gnId, gmes]) => {
+                        if (filters.selGns.length > 0 && !filters.selGns.includes(gnId)) return;
+                        Object.entries(gmes || {}).forEach(([gmeId, code]) => {
+                            if (filters.selGmes.length > 0 && !filters.selGmes.includes(gmeId)) return;
+                            const days = (parseInt(code.nb_journees_hc) || 0) + (parseInt(code.nb_journees_hp) || 0);
+                            if (!isNaN(days)) total += days;
+                        });
+                    });
+                });
+                return total > 0 ? total : null;
+            }),
+            borderColor: color,
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 3,
+            tension: 0.3,
+            spanGaps: true
+        };
+    });
+
+    // 3. Render Activity Comparison Chart
+    document.getElementById('comparison-name').textContent = isFiltered ? `📉 Comparaison d'Établissements (Filtré)` : `Comparaison d'Établissements`;
+    const ctx = document.getElementById('comparisonChart').getContext('2d');
+    if (comparisonChartInstance) comparisonChartInstance.destroy();
+    comparisonChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels: allLabels, datasets: chartDatasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } },
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+            }
+        }
+    });
+
+    // 4. Render Indicator Comparison (Latest Period)
+    const indicatorsContent = document.getElementById('comparison-indicators');
+    let html = `
+        <div style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    `;
+
+    allData.forEach(d => {
+        const lastP = Object.keys(d.periodes).sort().pop();
+        const pData = d.periodes[lastP] || {};
+
+        let wSumAge = 0, wDaysAge = 0;
+        let wSumSexe = 0, wDaysSexe = 0;
+        let totalDays = 0;
+
+        Object.entries(pData).forEach(([catMaj, gns]) => {
+            if (catMaj === 'total') return;
+            if (filters.selCms.length > 0 && !filters.selCms.includes(catMaj)) return;
+            Object.entries(gns || {}).forEach(([gnId, gmes]) => {
+                if (filters.selGns.length > 0 && !filters.selGns.includes(gnId)) return;
+                Object.entries(gmes || {}).forEach(([gmeId, code]) => {
+                    if (filters.selGmes.length > 0 && !filters.selGmes.includes(gmeId)) return;
+                    const days = (parseInt(code.nb_journees_hc) || 0) + (parseInt(code.nb_journees_hp) || 0);
+                    if (days > 0) {
+                        totalDays += days;
+                        const age = parseFloat(code.age_moyen);
+                        if (!isNaN(age)) { wSumAge += age * days; wDaysAge += days; }
+                        const sexe = parseFloat(code.sexe_ratio);
+                        if (!isNaN(sexe)) { wSumSexe += sexe * days; wDaysSexe += days; }
+                    }
+                });
+            });
+        });
+
+        const avgAge = wDaysAge > 0 ? (wSumAge / wDaysAge).toFixed(1) : "N/A";
+        const avgSexe = wDaysSexe > 0 ? (wSumSexe / wDaysSexe).toFixed(1) : "N/A";
+
+        html += `
+            <div class="stat-card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);">
+                <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.8rem; color: var(--primary-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${d.raison_sociale}">
+                    ${d.raison_sociale}
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Âge Moyen</span>
+                    <span style="font-weight: 600;">${avgAge} ans</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Sexe Ratio</span>
+                    <span style="font-weight: 600;">${avgSexe}% H</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Activité</span>
+                    <span style="font-weight: 600; color: var(--primary-light);">${totalDays.toLocaleString()} j.</span>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div>`;
+    indicatorsContent.innerHTML = html;
 }
 
 export function updateGlobalStats() {
@@ -79,7 +237,7 @@ export function updateGlobalStats() {
     if (state.table) {
         // Get rows that match the current filter correctly
         const filteredData = state.table.rows({ filter: 'applied' }).data().toArray();
-        const filteredFiness = filteredData.map(r => r[0]); // FINESS is in the first column
+        const filteredFiness = filteredData.map(r => r[1]); // FINESS is in the second column (index 1)
         sites = filteredFiness.map(f => state.mapping[f]).filter(Boolean); // filter Boolean just in case
     } else {
         sites = Object.values(state.mapping);
@@ -184,7 +342,10 @@ export async function loadEstablishment(finess) {
     }
 }
 
-function closeDetails() { document.getElementById('detail-view').style.display = 'none'; }
+function closeDetails() {
+    document.getElementById('detail-view').style.display = 'none';
+    document.getElementById('comparison-view').style.display = 'none';
+}
 
 window.closeDetails = closeDetails;
 
@@ -198,6 +359,8 @@ document.addEventListener('keydown', function (event) {
 let mainChartInstance = null;
 let profilingChartInstance = null;
 let indicatorTrendChartInstance = null;
+let comparisonChartInstance = null;
+let lastComparisonData = null; // To allow re-render on filter change
 
 // 1. Fonction qui gère les cases à cocher de l'arbre (Catégories > GN > GME)
 window.handleProfileToggle = function (cb) {
@@ -342,17 +505,6 @@ window.updateProfileChart = function () {
                     }
                 },
                 legend: { display: false }
-            },
-            scales: {
-                x: {
-                    title: { display: true, text: "Écart par rapport à la moyenne globale de l'établissement (%)", color: '#94a3b8' },
-                    grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { color: '#cbd5e1' }
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: { color: '#cbd5e1' }
-                }
             }
         }
     });
@@ -465,17 +617,20 @@ function updateDeptFilter() {
     });
 }
 
-function renderDetails(data) {
+export function captureMedicalFilters() {
+    const selCms = ($('#filter-cm').val() || []).filter(v => v && v !== 'ALL');
+    const selGns = ($('#filter-gn').val() || []).filter(Boolean);
+    const selGmes = ($('#filter-gme').val() || []).filter(Boolean);
+    const hasFilter = selCms.length > 0 || selGns.length > 0 || selGmes.length > 0;
+
+    window.currentMedicalFilters = { selCms, selGns, selGmes, hasFilter };
+    return window.currentMedicalFilters;
+}
+
+export function renderDetails(data) {
     const periodes = Object.keys(data.periodes || {}).sort();
 
-    // Get active filters
-    const selCms = $('#filter-cm').val() || [];
-    const selGns = $('#filter-gn').val() || [];
-    const selGmes = $('#filter-gme').val() || [];
-    const hasFilter = selCms.length > 0;
-
-    // Store globally for indicator trend usage
-    window.currentMedicalFilters = { selCms, selGns, selGmes, hasFilter };
+    const filters = captureMedicalFilters();
 
     // Reset optional panels when switching establishments
     document.getElementById('indicator-trend-section').style.display = 'none';
@@ -491,7 +646,8 @@ function renderDetails(data) {
     </div>
 `;
     const baseTitle = data.raison_sociale || "Établissement inconnu";
-    document.getElementById('det-name').textContent = hasFilter ? `📉 ${baseTitle} (Filtré)` : baseTitle;
+    const isFiltered = filters?.hasFilter === true;
+    document.getElementById('det-name').textContent = isFiltered ? `📉 ${baseTitle} (Filtré)` : baseTitle;
 
     if (periodes.length > 0) {
         const labels = periodes;
@@ -501,11 +657,11 @@ function renderDetails(data) {
             let total = 0;
             Object.entries(data.periodes[p] || {}).forEach(([catMaj, gns]) => {
                 if (catMaj === 'total') return;
-                if (selCms.length > 0 && !selCms.includes(catMaj)) return;
+                if (filters.selCms.length > 0 && !filters.selCms.includes(catMaj)) return;
                 Object.entries(gns || {}).forEach(([gnId, gmes]) => {
-                    if (selGns.length > 0 && !selGns.includes(gnId)) return;
+                    if (filters.selGns.length > 0 && !filters.selGns.includes(gnId)) return;
                     Object.entries(gmes || {}).forEach(([gmeId, code]) => {
-                        if (selGmes.length > 0 && !selGmes.includes(gmeId)) return;
+                        if (filters.selGmes.length > 0 && !filters.selGmes.includes(gmeId)) return;
                         const val = parseInt(code[field]);
                         if (!isNaN(val)) total += val;
                     });
@@ -539,18 +695,18 @@ function renderDetails(data) {
 
         Object.entries(data.periodes[lastP] || {}).forEach(([catMaj, gns]) => {
             if (catMaj === 'total') return; // Do not treat the official totals as a medical category
-            if (selCms.length > 0 && !selCms.includes(catMaj)) return;
+            if (filters.selCms.length > 0 && !filters.selCms.includes(catMaj)) return;
 
             let catTotal = 0;
             fullBreakdown[catMaj] = { total: 0, gns: {}, wAge: 0, dAge: 0, wSexe: 0, dSexe: 0, wAvqp: 0, dAvqp: 0, wAvqr: 0, dAvqr: 0, wCsarr: 0, sCsarr: 0 };
 
             Object.entries(gns || {}).forEach(([gnId, gmes]) => {
-                if (selGns.length > 0 && !selGns.includes(gnId)) return;
+                if (filters.selGns.length > 0 && !filters.selGns.includes(gnId)) return;
                 let gnTotal = 0;
                 fullBreakdown[catMaj].gns[gnId] = { total: 0, gmes: {}, wAge: 0, dAge: 0, wSexe: 0, dSexe: 0, wAvqp: 0, dAvqp: 0, wAvqr: 0, dAvqr: 0, wCsarr: 0, sCsarr: 0 };
 
                 Object.entries(gmes || {}).forEach(([gmeId, code]) => {
-                    if (selGmes.length > 0 && !selGmes.includes(gmeId)) return;
+                    if (filters.selGmes.length > 0 && !filters.selGmes.includes(gmeId)) return;
                     const c_hc = parseInt(code.nb_journees_hc) || 0;
                     const c_hp = parseInt(code.nb_journees_hp) || 0;
                     const days = c_hc + c_hp;
@@ -639,7 +795,7 @@ function renderDetails(data) {
         const compare = (calc, off, unit = "") => {
             const unitHtml = unit ? ` ${unit.trim()}` : '';
             // If the view is filtered, we don't compare with official global totals
-            if (hasFilter || !off) return { text: `${calc}${unitHtml}`, match: true };
+            if (filters.hasFilter || !off) return { text: `${calc}${unitHtml}`, match: true };
 
             const c = parseFloat(calc.toString().replace(/\s/g, ''));
             const o = parseFloat(off.toString().replace(/\s/g, ''));
@@ -875,10 +1031,9 @@ export function updateChart(labels, dataArr, hcArr, hpArr) {
     });
 }
 
-// js/ui.js (à la fin du fichier)
-import { fetchMapActivityData } from './api.js'; // Assurez-vous d'importer la nouvelle fonction en haut du fichier !
+let showAllOptions = false;
 
-export function initActivityFilters() {
+export async function initActivityFilters() {
     const $cm = $('#filter-cm');
     const $gn = $('#filter-gn');
     const $gme = $('#filter-gme');
@@ -890,65 +1045,100 @@ export function initActivityFilters() {
 
     // 2. On remplit les CM au démarrage
     state.optionsTree.forEach(cm => {
-        $cm.append(new Option(`${cm.value} - ${cm.text}`, cm.value));
+        if (cm.value === 'ALL') return; // skip pseudo-option
+        $cm.append(new Option(`${cm.text}`, cm.value));
     });
+
+    // S'assurer qu'il n'y a pas de sélection résiduelle
+    $cm.val(null);
+    $cm.trigger('change.select2');
+
+    $('#toggle-show-all').on('change', function () {
+        showAllOptions = this.checked;
+        // Rebuild GN list according to the new mode
+        rebuildAllOptions();
+    });
+
+    $('#btn-clear-filters').on('click', function () {
+        clearActivityFilters();
+    });
+
 
     // 3. Événement : Changement de sélection sur les CM
     $cm.on('change', async () => {
-        const cmVals = $cm.val() || []; // Retourne un tableau des CM sélectionnées
-        $gn.empty();
-        $gme.empty();
+        // Normaliser la valeur lue (éliminer valeurs vides)
+        let cmVals = $cm.val() || [];
+        cmVals = Array.isArray(cmVals) ? cmVals.filter(v => v && v !== 'ALL') : (cmVals ? [cmVals] : []);
 
-        if (cmVals.length > 0) {
-            // On filtre l'arbre pour ne garder que les CM sélectionnées
-            state.optionsTree.filter(c => cmVals.includes(c.value)).forEach(cmNode => {
-                (cmNode.groupes_nosologiques || []).forEach(gn => {
-                    $gn.append(new Option(`${gn.value} - ${gn.text}`, gn.value));
-                });
-            });
-            document.getElementById('group-filter-gn').style.display = 'flex';
-        } else {
-            document.getElementById('group-filter-gn').style.display = 'none';
-            document.getElementById('group-filter-gme').style.display = 'none';
-        }
+        // Toujours vider GME (sera repopulé par GN change)
+        $('#filter-gme').empty();
+        $('#filter-gme').val(null).trigger('change.select2');
 
-        // On prévient Select2 que les options internes ont changé
-        $gn.trigger('change.select2');
-        $gme.trigger('change.select2');
+        rebuildAllOptions();
 
         await applyActivityFilter();
     });
+
 
     // 4. Événement : Changement de sélection sur les GN
     $gn.on('change', async () => {
-        const cmVals = $cm.val() || [];
-        const gnVals = $gn.val() || []; // Retourne un tableau des GN sélectionnés
+        const cmVals = ($('#filter-cm').val() || []).filter(v => v && v !== 'ALL');
+        const gnVals = ($('#filter-gn').val() || []).filter(Boolean);
 
+        const $gme = $('#filter-gme');
         $gme.empty();
 
-        if (gnVals.length > 0) {
-            // On retrouve les CM sélectionnées
-            state.optionsTree.filter(c => cmVals.includes(c.value)).forEach(cmNode => {
-                // Dans ces CM, on retrouve les GN sélectionnés
-                const selectedGnNodes = (cmNode.groupes_nosologiques || []).filter(g => gnVals.includes(g.value));
+        const gmeSeen = new Set(); // Pour éviter les doublons de GME
 
-                // Pour chaque GN trouvé, on ajoute ses GME
-                selectedGnNodes.forEach(gnNode => {
-                    (gnNode.groupes_medico_economiques || []).forEach(gme => {
-                        $gme.append(new Option(`${gme.value} - ${gme.text}`, gme.value));
-                    });
+        if (gnVals.length > 0) {
+            // Des GN sont sélectionnés : on affiche uniquement les GME de ces GN
+            state.optionsTree.forEach(cmNode => {
+                (cmNode.groupes_nosologiques || []).forEach(gnNode => {
+                    if (gnVals.includes(gnNode.value)) {
+                        (gnNode.groupes_medico_economiques || []).forEach(gme => {
+                            if (!gmeSeen.has(gme.value)) {
+                                gmeSeen.add(gme.value);
+                                $gme.append(new Option(`${gme.text}`, gme.value));
+                            }
+                        });
+                    }
                 });
             });
-            document.getElementById('group-filter-gme').style.display = 'flex';
         } else {
-            document.getElementById('group-filter-gme').style.display = 'none';
+            // AUCUN GN N'EST SÉLECTIONNÉ : On repeuple selon le mode (Afficher tout ou CM sélectionnés)
+            if (showAllOptions) {
+                // Mode "Afficher tout" : on remet absolument tous les GME
+                state.optionsTree.forEach(cmNode => {
+                    (cmNode.groupes_nosologiques || []).forEach(gnNode => {
+                        (gnNode.groupes_medico_economiques || []).forEach(gme => {
+                            if (!gmeSeen.has(gme.value)) {
+                                gmeSeen.add(gme.value);
+                                $gme.append(new Option(gme.text, gme.value));
+                            }
+                        });
+                    });
+                });
+            } else if (cmVals.length > 0) {
+                // Mode restreint : on remet les GME appartenant aux CM sélectionnés
+                state.optionsTree.forEach(cmNode => {
+                    if (cmVals.includes(cmNode.value)) {
+                        (cmNode.groupes_nosologiques || []).forEach(gnNode => {
+                            (gnNode.groupes_medico_economiques || []).forEach(gme => {
+                                if (!gmeSeen.has(gme.value)) {
+                                    gmeSeen.add(gme.value);
+                                    $gme.append(new Option(gme.text, gme.value));
+                                }
+                            });
+                        });
+                    }
+                });
+            }
         }
 
-        // On prévient Select2 que les options internes ont changé
-        $gme.trigger('change.select2');
-
+        $gme.val(null).trigger('change.select2');
         await applyActivityFilter();
     });
+
 
     // 5. Événement : Changement de sélection sur les GME
     $gme.on('change', async () => {
@@ -957,26 +1147,43 @@ export function initActivityFilters() {
 }
 
 async function applyActivityFilter() {
-    const cm = $('#filter-cm').val();
-    const gn = $('#filter-gn').val();
-    const gme = $('#filter-gme').val();
+    // Normalisation : enlever valeurs vides et 'ALL'
+    const rawCm = ($('#filter-cm').val() || []);
+    const cm = Array.isArray(rawCm) ? rawCm.filter(v => v && v !== 'ALL') : (rawCm ? [rawCm] : []);
+    const gn = ($('#filter-gn').val() || []).filter(v => v && v !== '');
+    const gme = ($('#filter-gme').val() || []).filter(v => v && v !== '');
 
-    if (!cm || (Array.isArray(cm) && cm.length === 0)) {
-        state.mapCustomData = null; // Retour à la vue globale
+    // Si aucun filtre médical actif (ni CM, ni GN, ni GME) -> reset
+    const hasAnyMedicalFilter = (cm.length > 0) || (gn.length > 0) || (gme.length > 0);
+
+    // Cas spécial : si showAllOptions activé, on autorise GN même si cm vide
+    const allowGnOnly = !!window.showAllOptions;
+
+    if (!hasAnyMedicalFilter && !allowGnOnly) {
+        // Pas de filtre du tout -> on remet la map à l'état global
+        state.mapCustomData = null;
     } else {
-        // Indication visuelle du chargement
+        // On a soit des CM, soit des GN/GME, ou showAllOptions active -> on calcule
         document.body.style.cursor = 'wait';
         const mapBtn = document.getElementById('btn-map');
-        const originalText = mapBtn.textContent;
-        mapBtn.textContent = "Calcul en cours...";
+        const originalText = mapBtn ? mapBtn.textContent : null;
+        if (mapBtn) mapBtn.textContent = "Calcul en cours...";
 
-        state.mapCustomData = await fetchMapActivityData(cm, gn, gme);
-
-        document.body.style.cursor = 'default';
-        mapBtn.textContent = originalText;
+        try {
+            // Passer les tableaux tels quels ; fetchMapActivityData doit accepter [] pour cm
+            state.mapCustomData = await fetchMapActivityData(cm, gn, gme);
+        } catch (err) {
+            console.error('Erreur fetchMapActivityData', err);
+            state.mapCustomData = null;
+        } finally {
+            document.body.style.cursor = 'default';
+            if (mapBtn) mapBtn.textContent = originalText;
+        }
     }
 
+    // Forcer redraw table / stats / map
     if (state.table) {
+        state.table.rows().invalidate('data');
         state.table.draw();
         updateGlobalStats();
     }
@@ -984,4 +1191,103 @@ async function applyActivityFilter() {
     if (state.currentView === 'map') {
         refreshViews();
     }
+}
+
+function rebuildAllOptions() {
+    const $cm = $('#filter-cm');
+    const $gn = $('#filter-gn');
+    const $gme = $('#filter-gme');
+    const cmValsRaw = $cm.val() || [];
+    const cmVals = Array.isArray(cmValsRaw) ? cmValsRaw.filter(v => v && v !== 'ALL') : (cmValsRaw ? [cmValsRaw] : []);
+    const gnValsRaw = $gn.val() || [];
+    const gnVals = Array.isArray(gnValsRaw) ? gnValsRaw.filter(v => v && v !== '') : (gnValsRaw ? [gnValsRaw] : []);
+
+    $gn.empty();
+    $gme.empty();
+
+    if (showAllOptions) {
+        const gnSeen = new Set();
+        const gmeSeen = new Set();
+
+        // Mode "Tous" : On parcourt l'arbre complet (CM > GN > GME)
+        state.optionsTree.forEach(cmNode => {
+            const gns = cmNode.groupes_nosologiques;
+            const safeGns = gns ? gns : [];
+
+            safeGns.forEach(gn => {
+                // 1. On liste tous les GN existants
+                if (!gnSeen.has(gn.value)) {
+                    gnSeen.add(gn.value);
+                    $gn.append(new Option(gn.text, gn.value));
+                }
+
+                // 2. On liste tous les GME contenus dans ces GN
+                const gmes = gn.groupes_medico_economiques;
+                const safeGmes = gmes ? gmes : [];
+
+                safeGmes.forEach(gme => {
+                    if (!gmeSeen.has(gme.value)) {
+                        gmeSeen.add(gme.value);
+                        $gme.append(new Option(gme.text, gme.value));
+                    }
+                });
+            });
+        });
+    } else {
+        // Mode restreint : GN uniquement pour les CM sélectionnés
+        if (cmVals.length === 0) {
+            $gn.val(null).trigger('change.select2');
+            return;
+        }
+
+        // 1. On remplit les GN avec les CM sélectionnés
+        state.optionsTree.filter(c => cmVals.includes(c.value)).forEach(cmNode => {
+            (cmNode.groupes_nosologiques || []).forEach(gn => {
+                $gn.append(new Option(`${gn.text}`, gn.value));
+            });
+        });
+
+        // 2. Si aucun GN n'est sélectionné, on arrête là
+        if (gnVals.length === 0) {
+            $gme.val(null).trigger('change.select2');
+            return;
+        }
+
+        // On rentre dans les CM sélectionnés, on parcourt leurs GN, et on filtre sur les GN sélectionnés.
+        state.optionsTree.filter(c => cmVals.includes(c.value)).forEach(cmNode => {
+            (cmNode.groupes_nosologiques || []).forEach(gnNode => {
+                // On vérifie si ce GN fait partie des GN sélectionnés par l'utilisateur
+                if (gnVals.includes(gnNode.value)) {
+                    // Si oui, on ajoute ses GME
+                    (gnNode.groupes_medico_economiques || []).forEach(gme => {
+                        $gme.append(new Option(`${gme.text}`, gme.value));
+                    });
+                }
+            });
+        });
+    }
+
+    // notifier Select2 et réinitialiser la sélection GN
+    $gn.val(null).trigger('change.select2');
+}
+
+function clearActivityFilters() {
+    const $cm = $('#filter-cm');
+    const $gn = $('#filter-gn');
+    const $gme = $('#filter-gme');
+
+    // Vider la sélection CM (aucune valeur sélectionnée)
+    $cm.val(null).trigger('change.select2');
+
+    // Vider GN / GME et notifier Select2
+    $gn.empty();
+    $gme.empty();
+    $gn.val(null).trigger('change.select2');
+    $gme.val(null).trigger('change.select2');
+
+    // Rebuild GN selon le mode showAllOptions (affichera tous les GN si coché, sinon GN caché)
+    rebuildAllOptions();
+
+    // Appliquer le filtre (captureMedicalFilters() doit considérer [] comme "aucun filtre")
+    applyActivityFilter();
 }

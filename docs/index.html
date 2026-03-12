@@ -99,26 +99,35 @@
             </div>
 
             <!-- 2. NOUVELLE Barre de Filtres d'Activité Médicale (En dessous) -->
-            <div class="filters-bar" style="margin-top: -0.5rem; border-color: rgba(139, 92, 246, 0.3);">
+            <div class="filters-bar" style="border-color: rgba(139, 92, 246, 0.3);">
                 <div class="filter-group">
-                    <label class="filter-label" style="color: var(--primary-light);">Catégorie Majeure
-                        (Activité)</label>
+                    <label class="filter-label" style="color: var(--primary-light);">Catégorie Majeure</label>
                     <select id="filter-cm" class="filter-select" multiple="multiple">
-                        <option value="">Activité globale (Toutes pathologies)</option>
+                        <option value="ALL" disabled>Toutes les CM</option>
                     </select>
                 </div>
-                <div class="filter-group" id="group-filter-gn" style="display: none;">
+                <div class="filter-group" id="group-filter-gn" style="border-color: rgba(139, 92, 246, 0.3);">
                     <label class="filter-label" style="color: var(--primary-light);">Groupe Nosologique</label>
                     <select id="filter-gn" class="filter-select" multiple="multiple">
                         <option value="">Tous les GN</option>
                     </select>
                 </div>
-                <div class="filter-group" id="group-filter-gme" style="display: none;">
+                <div class="filter-group" id="group-filter-gme" style="border-color: rgba(139, 92, 246, 0.3);">
                     <label class="filter-label" style="color: var(--primary-light);">GME</label>
                     <select id="filter-gme" class="filter-select" multiple="multiple">
                         <option value="">Tous les GME</option>
                     </select>
                 </div>
+                <div class="filters-actions">
+                    <label class="filters-actions__toggle">
+                        <input id="toggle-show-all" type="checkbox" /> <span>Afficher tout</span>
+                    </label>
+
+                    <button id="btn-clear-filters" class="btn-secondary compact">
+                        Réinitialiser les filtres
+                    </button>
+                </div>
+
             </div>
         </header>
 
@@ -126,11 +135,14 @@
             <table id="main-table" class="display responsive nowrap">
                 <thead>
                     <tr>
+                        <th style="width: 30px; text-align: center;"><input type="checkbox"
+                                id="select-all-establishments"></th>
                         <th>FINESS</th>
                         <th>Raison Sociale</th>
                         <th>Département</th>
                         <th>Région</th>
                         <th>Catégorie</th>
+                        <th>Journées</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -196,6 +208,38 @@
 
             <div id="det-raw">
                 Sélectionnez un établissement pour extraire les indicateurs détaillés.
+            </div>
+        </div>
+    </div>
+
+    <!-- Barre de comparaison flottante -->
+    <div id="comparison-bar" style="display: none;">
+        <div class="comparison-info">
+            <span id="comparison-count">0</span> établissements sélectionnés
+        </div>
+        <div class="comparison-actions">
+            <button id="btn-clear-selection" class="btn-secondary">Tout effacer</button>
+            <button id="btn-compare" class="btn-primary">Comparer</button>
+        </div>
+    </div>
+
+    <!-- Vue Comparaison -->
+    <div id="comparison-view" class="drawer">
+        <div class="close-btn" onclick="closeComparison()">✕</div>
+        <div id="comparison-content" class="drawer-content">
+            <h2 id="comparison-name" style="margin: 0 0 1.5rem 0; font-size: 1.8rem;">Comparaison d'Établissements</h2>
+
+            <div class="comparison-grid" id="comparison-indicators">
+                <!-- Rempli par JS -->
+            </div>
+
+            <div class="section-title">Évolution de l'Activité (Journées)</div>
+            <div class="chart-container" style="height: 350px;">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+
+            <div id="comparison-indicators-trends">
+                <!-- Sections pour les tendances comparées (Age, etc.) -->
             </div>
         </div>
     </div>

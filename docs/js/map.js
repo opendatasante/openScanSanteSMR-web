@@ -22,7 +22,7 @@ export function refreshViews() {
     if (state.currentView !== "map" || !state.table) return;
 
     const filteredData = state.table.rows({ filter: 'applied' }).data().toArray();
-    const filteredFiness = filteredData.map(r => r[0]);
+    const filteredFiness = filteredData.map(r => r[1]);
 
     const filteredSites = {};
     filteredFiness.forEach(f => { filteredSites[f] = state.mapping[f]; });
@@ -72,8 +72,7 @@ function updateMapMarkers(sites) {
         // On ajuste le coefficient pour que les bulles des petits GME restent visibles
         //const multiplier = state.mapCustomData !== null ? 0.15 : 0.05;
         const multiplier = 0.05;
-        //const radius = Math.max(4, Math.sqrt(total) * multiplier);
-        const radius = Math.max(3, Math.sqrt(total) * multiplier);
+        const radius = Math.max(4, Math.sqrt(total) * multiplier);
 
         const isPrivate = (s.categorie || "").toUpperCase().includes("PRIV");
         const color = isPrivate ? "#ff6b6b" : "#4dabf7";

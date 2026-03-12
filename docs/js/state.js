@@ -9,7 +9,8 @@ export const state = {
     currentView: "list",
     globalMetrics: {},
     optionsTree: [],
-    mapCustomData: null
+    mapCustomData: null,
+    selectedFiness: []
 };
 
 export const config = {
