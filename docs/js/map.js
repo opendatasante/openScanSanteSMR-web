@@ -184,7 +184,8 @@ function fitMapToMarkers() {
 async function loadMapBackgrounds() {
     // 1. FRANCE MÉTROPOLITAINE (Contours améliorés)
     try {
-        const resMetro = await fetch("https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson");
+        //const resMetro = await fetch("https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson");
+        const resMetro = await fetch("https://cdn.jsdelivr.net/gh/gregoiredavid/france-geojson/departements-version-simplifiee.geojson");
         const dataMetro = await resMetro.json();
 
         dataMetro.features = dataMetro.features.filter(f => !f.properties.code.startsWith("97"));
@@ -204,12 +205,19 @@ async function loadMapBackgrounds() {
     }
 
     // 2. DOM-TOM
+    //const doms = [
+    //    { code: "971", name: "Guadeloupe", url: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements/971-guadeloupe/departement-971-guadeloupe.geojson" },
+    //    { code: "972", name: "Martinique", url: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements/972-martinique/departement-972-martinique.geojson" },
+    //    { code: "973", name: "Guyane", url: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements/973-guyane/departement-973-guyane.geojson" },
+    //    { code: "974", name: "La Réunion", url: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements/974-la-reunion/departement-974-la-reunion.geojson" },
+    //    { code: "976", name: "Mayotte", url: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements/976-mayotte/departement-976-mayotte.geojson" }
+    //];
     const doms = [
-        { code: "971", name: "Guadeloupe", url: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements/971-guadeloupe/departement-971-guadeloupe.geojson" },
-        { code: "972", name: "Martinique", url: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements/972-martinique/departement-972-martinique.geojson" },
-        { code: "973", name: "Guyane", url: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements/973-guyane/departement-973-guyane.geojson" },
-        { code: "974", name: "La Réunion", url: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements/974-la-reunion/departement-974-la-reunion.geojson" },
-        { code: "976", name: "Mayotte", url: "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements/976-mayotte/departement-976-mayotte.geojson" }
+        { code: "971", name: "Guadeloupe", url: "https://cdn.jsdelivr.net/gh/gregoiredavid/france-geojson/departements/971-guadeloupe/departement-971-guadeloupe.geojson" },
+        { code: "972", name: "Martinique", url: "https://cdn.jsdelivr.net/gh/gregoiredavid/france-geojson/departements/972-martinique/departement-972-martinique.geojson" },
+        { code: "973", name: "Guyane", url: "https://cdn.jsdelivr.net/gh/gregoiredavid/france-geojson/departements/973-guyane/departement-973-guyane.geojson" },
+        { code: "974", name: "La Réunion", url: "https://cdn.jsdelivr.net/gh/gregoiredavid/france-geojson/departements/974-la-reunion/departement-974-la-reunion.geojson" },
+        { code: "976", name: "Mayotte", url: "https://cdn.jsdelivr.net/gh/gregoiredavid/france-geojson/departements/976-mayotte/departement-976-mayotte.geojson" }
     ];
 
     for (const dom of doms) {
