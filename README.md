@@ -4,6 +4,3 @@ Lancez le serveur local :
 python -m http.server 8000
 ```
 Explorez : http://localhost:8000/docs/index.html
-
-## TODO
-- gestion du secret statistique (intervalle de confiance, isInacurrate avec avertissement sur les jours d'hospit, les indicateurs, ...)

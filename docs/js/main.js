@@ -46,11 +46,9 @@ async function init() {
                         const finess = row[1]; // FINESS est à l'index 1
                         let total = 0;
 
-                        // Si un filtre médical est actif, on prend sa valeur
-                        if (state.mapCustomData !== null) {
-                            total = state.mapCustomData[finess] || 0;
+                        if (state.mapCustomData && state.mapCustomData[finess] && state.mapCustomData[finess].val !== undefined) {
+                            total = state.mapCustomData[finess].val;
                         } else {
-                            // Sinon on prend le total global
                             total = state.mapping[finess]?.total_journees || 0;
                         }
 
@@ -69,7 +67,8 @@ async function init() {
             if (!state.mapCustomData) return true;
 
             const finess = data[1];
-            const volume = state.mapCustomData[finess] || 0;
+            const entry = state.mapCustomData?.[finess];
+            const volume = entry?.val ?? 0;
 
             return volume > 0;
         });

@@ -1,6 +1,29 @@
 // js/api.js
 import { state, config } from './state.js';
 
+// --- Utilitaires du Secret Statistique (API) ---
+// On les place ici pour éviter une dépendance circulaire avec ui.js
+export function parseDaysAPI(val) {
+    if (val === undefined || val === null || val === "NA" || val === "N/A" || val === "") {
+        return { min: 0, max: 0, isExact: true, mid: 0 };
+    }
+    if (val === "1 à 10" || val === "< 11") {
+        return { min: 1, max: 10, isExact: false, mid: 5.5 };
+    }
+    const num = parseInt(val) || 0;
+    return { min: num, max: num, isExact: true, mid: num };
+}
+
+export function addStatsAPI(s1, s2) {
+    return {
+        min: s1.min + s2.min,
+        max: s1.max + s2.max,
+        isExact: s1.isExact && s2.isExact,
+        mid: s1.mid + s2.mid
+    };
+}
+// ------------------------------------------------
+
 export async function fetchInitialData() {
     // 1. Charger l'index (Mapping Finess -> Géo)
     const mappingUrl = `${config.dataBaseUrl}/search/finess_geo_mapping_enrichis.json`;
@@ -16,9 +39,20 @@ export async function fetchInitialData() {
         jsonTotal.data.forEach(row => {
             const f = row.finess;
             if (state.mapping[f]) {
-                state.mapping[f].total_journees = parseInt(row.nb_journees_total) || 0;
-                state.mapping[f].total_hc = parseInt(row.nb_journees_hc) || 0;
-                state.mapping[f].total_hp = parseInt(row.nb_journees_hp) || 0;
+                const statTotal = parseDaysAPI(row.nb_journees_total);
+                const statHc = parseDaysAPI(row.nb_journees_hc);
+                const statHp = parseDaysAPI(row.nb_journees_hp);
+
+                // On stocke les objets complets pour générer de jolis affichages (avec "1 à 10")
+                state.mapping[f].stat_total = statTotal;
+                state.mapping[f].stat_hc = statHc;
+                state.mapping[f].stat_hp = statHp;
+
+                // Rétrocompatibilité : On maintient les propriétés historiques avec la valeur numérique (.mid)
+                // Cela empêche le tri des colonnes de Datatables ou les cercles de Leaflet de casser
+                state.mapping[f].total_journees = statTotal.mid;
+                state.mapping[f].total_hc = statHc.mid;
+                state.mapping[f].total_hp = statHp.mid;
             }
         });
     } catch (e) { console.warn("Impossible de charger les totaux :", e); }
@@ -69,38 +103,32 @@ export async function fetchMapActivityData(selectedCms, selectedGns, selectedGme
 
     // On parcourt l'arbre pour déterminer les chemins optimaux
     state.optionsTree.forEach(cm => {
-        // Si des CM sont sélectionnées et que celle-ci n'y est pas, on l'ignore
         if (cms.length > 0 && !cms.includes(cm.value)) return;
 
-        // OPTIMISATION 1 : Si aucun filtre GN ni GME n'est actif, on prend directement le fichier de la CM
+        // OPTIMISATION 1
         if (gns.length === 0 && gmes.length === 0) {
-            paths.push(`${cm.value}`); // Ex: "01"
-            return; // On passe à la CM suivante sans explorer ses enfants
+            paths.push(`${cm.value}`);
+            return;
         }
 
         (cm.groupes_nosologiques || []).forEach(gn => {
-            // Si des GN sont sélectionnés et que celui-ci n'y est pas, on l'ignore
             if (gns.length > 0 && !gns.includes(gn.value)) return;
 
-            // OPTIMISATION 2 : Si aucun filtre GME n'est actif, on prend directement le fichier du GN
+            // OPTIMISATION 2
             if (gmes.length === 0) {
-                paths.push(`${cm.value}/${gn.value}`); // Ex: "01/01C"
-                return; // On passe au GN suivant sans explorer ses GME
+                paths.push(`${cm.value}/${gn.value}`);
+                return;
             }
 
             (gn.groupes_medico_economiques || []).forEach(gme => {
-                // Si des GME sont sélectionnés et que celui-ci n'y est pas, on l'ignore
                 if (gmes.length > 0 && !gmes.includes(gme.value)) return;
-
-                // Niveau le plus bas : on prend le fichier du GME spécifique
-                paths.push(`${cm.value}/${gn.value}/${gme.value}`); // Ex: "01/01C/01C031"
+                paths.push(`${cm.value}/${gn.value}/${gme.value}`);
             });
         });
     });
 
     const customData = {};
 
-    // On lance tous les téléchargements en parallèle en ajoutant simplement "/latest.json" à nos chemins
     const promises = paths.map(pathStr =>
         fetch(`${config.cdnPrefix}data/restitutions/${pathStr}/latest.json`)
             .then(r => r.ok ? r.json() : null)
@@ -114,9 +142,21 @@ export async function fetchMapActivityData(selectedCms, selectedGns, selectedGme
         if (file && file.data) {
             file.data.forEach(row => {
                 const f = row.finess;
-                const days = (parseInt(row.nb_journees_hc) || 0) + (parseInt(row.nb_journees_hp) || 0);
-                if (!customData[f]) customData[f] = 0;
-                customData[f] += days;
+
+                // On extrait les intervalles
+                const hcStat = parseDaysAPI(row.nb_journees_hc);
+                const hpStat = parseDaysAPI(row.nb_journees_hp);
+                const daysStat = addStatsAPI(hcStat, hpStat);
+
+                // Initialisation en tant qu'objet si premier passage
+                if (!customData[f]) {
+                    customData[f] = { val: 0, stat: parseDaysAPI(0) };
+                }
+
+                // Agrégation des objets intervalles
+                customData[f].stat = addStatsAPI(customData[f].stat, daysStat);
+                // Mise à jour de la valeur continue (médiane) pour dimensionner les cercles de la carte
+                customData[f].val = customData[f].stat.mid;
             });
         }
     });

@@ -129,7 +129,6 @@ export function refreshViews() {
     fitMapToMarkers();
 }
 
-
 function updateMapMarkers(sites) {
     markersLayer.clearLayers();
 
@@ -137,12 +136,17 @@ function updateMapMarkers(sites) {
         if (!state.mapping[finess] || !s.latitude || !s.longitude) return;
 
         let total = 0;
+        let statObj = null; // On prépare une variable pour stocker les infos du secret
 
-        if (state.mapCustomData !== null) {
-            total = state.mapCustomData[finess] || 0;
+        const entry = state.mapCustomData?.[finess];
+
+        if (entry) {
+            total = entry.val ?? 0;
+            statObj = entry.stat; // Ajouté dans api.js (contient min, max, isExact)
             if (total === 0) return;
         } else {
-            total = s.total_journees || 0;
+            total = s.total_journees ?? 0;
+            statObj = s.stat_total; // Ajouté dans api.js
         }
 
         const multiplier = 0.05;
@@ -166,11 +170,24 @@ function updateMapMarkers(sites) {
             import('./ui.js').then(module => module.loadEstablishment(finess));
         });
 
+        // Formatage intelligent pour la Popup (gestion du cadenas)
+        let popupText = `${total.toLocaleString()} j.`;
+        if (statObj) {
+            if (statObj.isExact) {
+                popupText = `${statObj.min.toLocaleString()} j.`;
+            } else {
+                // Si c'est masqué, on affiche l'intervalle avec le petit cadenas
+                popupText = statObj.min === 1 && statObj.max === 10
+                    ? `1 à 10 j. 🔒`
+                    : `${statObj.min.toLocaleString()} à ${statObj.max.toLocaleString()} j. 🔒`;
+            }
+        }
+
         marker.bindPopup(`
             <strong>${s.raison_sociale}</strong><br>
             ${s.dep_name} (${s.dep_code})<br>
             ${s.categorie}<br>
-            <span style="color:#888">Journées (Critère) : ${total.toLocaleString()}</span>
+            <span style="color:#888">Activité : ${popupText}</span>
         `);
     });
 }
