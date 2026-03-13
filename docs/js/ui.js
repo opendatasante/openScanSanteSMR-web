@@ -171,11 +171,27 @@ function renderComparison(allData) {
         }
     });
 
+    // --- Sélecteur d'établissement de référence ---
+    let selectorHtml = `
+        <div style="grid-column: 1 / -1; margin-bottom: 1rem;">
+            <label style="font-size:0.85rem; color:var(--text-muted); margin-right:0.5rem;">
+                Établissement de référence :
+            </label>
+            <select id="comparison-reference" class="filter-select">
+                <option value="">— Aucun —</option>
+                ${allData.map(d => `<option value="${d.finess}">${d.raison_sociale}</option>`).join('')}
+            </select>
+        </div>
+    `;
+
+
     // 4. Render Indicator Comparison (Latest Period)
     const indicatorsContent = document.getElementById('comparison-indicators');
     let html = `
         <div style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
     `;
+
+    html = selectorHtml + html;
 
     allData.forEach(d => {
         const lastP = Object.keys(d.periodes).sort().pop();
@@ -253,15 +269,15 @@ function renderComparison(allData) {
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
                     <span style="font-size: 0.8rem; color: var(--text-muted);">AVQ physique</span>
-                    <span style="font-weight: 600;">${avgAvqp}</span>
+                    <span style="font-weight: 600;">${avgAvqp}/4</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
                     <span style="font-size: 0.8rem; color: var(--text-muted);">AVQ relationnel</span>
-                    <span style="font-weight: 600;">${avgAvqr}</span>
+                    <span style="font-weight: 600;">${avgAvqr}/4</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
                     <span style="font-size: 0.8rem; color: var(--text-muted);">Actes CSARR</span>
-                    <span style="font-weight: 600;">${avgCsarr}</span>
+                    <span style="font-weight: 600;">${avgCsarr}/j</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,255,255,0.05);">
                     <span style="font-size: 0.8rem; color: var(--text-muted);">Activité</span>
@@ -283,7 +299,378 @@ function renderComparison(allData) {
 
     html += `</div>`;
     indicatorsContent.innerHTML = html;
+
+    renderMultiRadar(allData);
+
+    // 5. Render comparison profile
+    initComparisonTabs();
+    const refSelect = document.getElementById('comparison-reference');
+
+    // 1. Installer l'événement onchange
+    refSelect.onchange = () => {
+        if (!refSelect.value) {
+            document.getElementById('comparison-tabs').style.display = 'none';
+            return;
+        }
+        computeComparisonProfile(allData);
+    };
+
+    // 2. Auto‑sélection si 2 établissements
+    if (allData.length === 2) {
+        refSelect.value = String(allData[0].finess);
+        computeComparisonProfile(allData);
+    }
+
+    // 3. Si rien n'est sélectionné → masquer tout
+    if (!refSelect.value) {
+        document.getElementById('comparison-tabs').style.display = 'none';
+        return;
+    }
+
 }
+
+function computeProfile(est, filters) {
+    const lastP = Object.keys(est.periodes).sort().pop();
+    const pData = est.periodes[lastP] || {};
+
+    let totalDays = 0;
+    let wAge = 0, dAge = 0;
+    let wSexe = 0, dSexe = 0;
+    let wAvqp = 0, dAvqp = 0;
+    let wAvqr = 0, dAvqr = 0;
+    let wCsarr = 0, dCsarr = 0;
+
+    Object.entries(pData).forEach(([catMaj, gns]) => {
+        if (catMaj === 'total') return;
+        if (filters.selCms.length > 0 && !filters.selCms.includes(catMaj)) return;
+
+        Object.entries(gns || {}).forEach(([gnId, gmes]) => {
+            if (filters.selGns.length > 0 && !filters.selGns.includes(gnId)) return;
+
+            Object.entries(gmes || {}).forEach(([gmeId, code]) => {
+                if (filters.selGmes.length > 0 && !filters.selGmes.includes(gmeId)) return;
+
+                const hc = parseInt(code.nb_journees_hc) || 0;
+                const hp = parseInt(code.nb_journees_hp) || 0;
+                const days = hc + hp;
+                if (days === 0) return;
+
+                totalDays += days;
+
+                const age = parseFloat(code.age_moyen);
+                if (!isNaN(age)) { wAge += age * days; dAge += days; }
+
+                const sexe = parseFloat(code.sexe_ratio);
+                if (!isNaN(sexe)) { wSexe += sexe * days; dSexe += days; }
+
+                const avqp = parseFloat(code.avq_physique);
+                if (!isNaN(avqp)) { wAvqp += avqp * days; dAvqp += days; }
+
+                const avqr = parseFloat(code.avq_relationnel);
+                if (!isNaN(avqr)) { wAvqr += avqr * days; dAvqr += days; }
+
+                const csarr = parseFloat(code.nb_actes_csarr);
+                if (!isNaN(csarr)) { wCsarr += csarr * days; dCsarr += days; }
+            });
+        });
+    });
+
+    return {
+        age: dAge > 0 ? wAge / dAge : null,
+        sexe: dSexe > 0 ? wSexe / dSexe : null,
+        avqp: dAvqp > 0 ? wAvqp / dAvqp : null,
+        avqr: dAvqr > 0 ? wAvqr / dAvqr : null,
+        csarr: dCsarr > 0 ? wCsarr / dCsarr : null
+    };
+}
+
+function average(arr) {
+    const vals = arr.filter(v => v !== null && !isNaN(v));
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+
+function initComparisonTabs() {
+    const buttons = document.querySelectorAll('.tab-btn');
+    const panels = document.querySelectorAll('.tab-panel');
+
+    buttons.forEach(btn => {
+        btn.onclick = () => {
+            // désactiver tous les onglets
+            buttons.forEach(b => b.classList.remove('active'));
+            panels.forEach(p => p.style.display = 'none');
+
+            // activer celui cliqué
+            btn.classList.add('active');
+            const tab = btn.dataset.tab;
+            document.getElementById(`tab-${tab}`).style.display = 'block';
+        };
+    });
+}
+
+let comparisonProfileChartInstance = null;
+
+function computeComparisonProfile(allData) {
+    const refFiness = document.getElementById('comparison-reference').value;
+    if (!refFiness) {
+        document.getElementById('comparison-tabs').style.display = 'none';
+        return;
+    }
+    document.getElementById('comparison-tabs').style.display = 'block';
+
+    const filters = window.currentMedicalFilters || { selCms: [], selGns: [], selGmes: [], hasFilter: false };
+
+    const ref = allData.find(d => String(d.finess) === String(refFiness));
+    if (!ref) return;
+
+    const others = allData.filter(d => String(d.finess) !== String(refFiness));
+
+    const refProfile = computeProfile(ref, filters);
+    const otherProfiles = others.map(d => computeProfile(d, filters));
+
+    const avg = {
+        age: average(otherProfiles.map(p => p.age)),
+        sexe: average(otherProfiles.map(p => p.sexe)),
+        avqp: average(otherProfiles.map(p => p.avqp)),
+        avqr: average(otherProfiles.map(p => p.avqr)),
+        csarr: average(otherProfiles.map(p => p.csarr))
+    };
+
+    const labels = ['Âge', 'Sexe (%H)', 'AVQ Physique', 'AVQ Relationnel', 'CSARR'];
+    const refValues = [refProfile.age, refProfile.sexe, refProfile.avqp, refProfile.avqr, refProfile.csarr];
+    const avgValues = [avg.age, avg.sexe, avg.avqp, avg.avqr, avg.csarr];
+
+    const ctx = document.getElementById('comparisonProfileChart').getContext('2d');
+    if (comparisonProfileChartInstance) comparisonProfileChartInstance.destroy();
+
+    comparisonProfileChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: ref.raison_sociale,
+                    data: refValues,
+                    backgroundColor: 'rgba(56, 189, 248, 0.5)',
+                    borderColor: '#38bdf8',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Moyenne Autres',
+                    data: avgValues,
+                    backgroundColor: 'rgba(139, 92, 246, 0.5)',
+                    borderColor: '#a78bfa',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom' } },
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+
+    computeComparisonSummary(refProfile, avg, ref.raison_sociale);
+    computeComparisonDiff(refProfile, avg, ref.raison_sociale);
+    computeComparisonRadar(refProfile, avg, ref.raison_sociale);
+
+}
+
+let comparisonDiffChartInstance = null;
+
+function computeComparisonDiff(refProfile, avgProfile, refName) {
+
+    const diffAge = (refProfile.age && avgProfile.age) ? ((refProfile.age - avgProfile.age) / avgProfile.age) * 100 : 0;
+    const diffSexe = (refProfile.sexe && avgProfile.sexe) ? ((refProfile.sexe - avgProfile.sexe) / avgProfile.sexe) * 100 : 0;
+    const diffAvqp = (refProfile.avqp && avgProfile.avqp) ? ((refProfile.avqp - avgProfile.avqp) / avgProfile.avqp) * 100 : 0;
+    const diffAvqr = (refProfile.avqr && avgProfile.avqr) ? ((refProfile.avqr - avgProfile.avqr) / avgProfile.avqr) * 100 : 0;
+    const diffCsarr = (refProfile.csarr && avgProfile.csarr) ? ((refProfile.csarr - avgProfile.csarr) / avgProfile.csarr) * 100 : 0;
+
+    const diffs = [diffAge, diffSexe, diffAvqp, diffAvqr, diffCsarr];
+
+    const ctx = document.getElementById('comparisonDiffChart').getContext('2d');
+    if (comparisonDiffChartInstance) comparisonDiffChartInstance.destroy();
+
+    comparisonDiffChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Âge Moyen', 'Sexe Ratio (%H)', 'AVQ Physique', 'AVQ Relationnel', 'Actes CSARR'],
+            datasets: [{
+                label: `Écart % (${refName} vs Moyenne Autres)`,
+                data: diffs,
+                backgroundColor: diffs.map(v => v >= 0 ? 'rgba(74, 222, 128, 0.5)' : 'rgba(248, 113, 113, 0.5)'),
+                borderColor: diffs.map(v => v >= 0 ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'),
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.raw.toFixed(1)}%`
+                    }
+                }
+            },
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+let comparisonRadarChartInstance = null;
+
+function computeComparisonRadar(refProfile, avgProfile, refName) {
+
+    const labels = ['Âge', 'Sexe (%H)', 'AVQ Physique', 'AVQ Relationnel', 'CSARR'];
+    const refValues = [refProfile.age, refProfile.sexe, refProfile.avqp, refProfile.avqr, refProfile.csarr];
+    const avgValues = [avgProfile.age, avgProfile.sexe, avgProfile.avqp, avgProfile.avqr, avgProfile.csarr];
+
+    const ctx = document.getElementById('comparisonRadarChart').getContext('2d');
+    if (comparisonRadarChartInstance) comparisonRadarChartInstance.destroy();
+
+    comparisonRadarChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: refName,
+                    data: refValues,
+                    backgroundColor: 'rgba(56, 189, 248, 0.3)',
+                    borderColor: '#38bdf8',
+                    borderWidth: 2,
+                    pointRadius: 3
+                },
+                {
+                    label: 'Moyenne Autres',
+                    data: avgValues,
+                    backgroundColor: 'rgba(139, 92, 246, 0.3)',
+                    borderColor: '#a78bfa',
+                    borderWidth: 2,
+                    pointRadius: 3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    ticks: { display: false },
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    angleLines: { color: 'rgba(255,255,255,0.1)' },
+                    pointLabels: { color: '#cbd5e1' }
+                }
+            }
+        }
+    });
+}
+
+let comparisonRadarMultiChartInstance = null;
+
+function renderMultiRadar(allData) {
+    const filters = window.currentMedicalFilters || { selCms: [], selGns: [], selGmes: [], hasFilter: false };
+
+    const profiles = allData.map(est => ({
+        name: est.raison_sociale,
+        profile: computeProfile(est, filters)
+    }));
+
+    const labels = ['Âge (ans)', 'Sexe Ratio (%H)', 'AVQ Physique (/4)', 'AVQ Relationnel (/4)', 'CSARR (/j)'];
+
+    const datasets = profiles.map((p, idx) => {
+        const colors = ['#38bdf8', '#a78bfa', '#34d399', '#f59e0b', '#f43f5e', '#fbbf24'];
+        const color = colors[idx % colors.length];
+
+        return {
+            label: p.name,
+            data: [
+                p.profile.age,
+                p.profile.sexe,
+                p.profile.avqp,
+                p.profile.avqr,
+                p.profile.csarr
+            ],
+            backgroundColor: color + '33',
+            borderColor: color,
+            borderWidth: 2,
+            pointRadius: 3
+        };
+    });
+
+    const container = document.getElementById('comparison-radar-multi');
+    container.style.display = 'block';
+
+    const ctx = document.getElementById('comparisonRadarMultiChart').getContext('2d');
+    if (comparisonRadarMultiChartInstance) comparisonRadarMultiChartInstance.destroy();
+
+    comparisonRadarMultiChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    ticks: { display: false },
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    angleLines: { color: 'rgba(255,255,255,0.1)' },
+                    pointLabels: { color: '#cbd5e1' }
+                }
+            },
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+}
+
+function computeComparisonSummary(refProfile, avgProfile, refName) {
+    const container = document.getElementById('comparison-summary');
+    container.style.display = 'block';
+
+    const diffs = {
+        'Âge moyen': refProfile.age - avgProfile.age,
+        'Sexe (%H)': refProfile.sexe - avgProfile.sexe,
+        'AVQ Physique': refProfile.avqp - avgProfile.avqp,
+        'AVQ Relationnel': refProfile.avqr - avgProfile.avqr,
+        'Actes CSARR': refProfile.csarr - avgProfile.csarr
+    };
+
+    const positives = Object.entries(diffs)
+        .filter(([k, v]) => v < 0)
+        .map(([k, v]) => `<li>${k} meilleur que la moyenne des autres (${v.toFixed(2)})</li>`);
+
+    const negatives = Object.entries(diffs)
+        .filter(([k, v]) => v > 0)
+        .map(([k, v]) => `<li>${k} moins bon que la moyenne des autres (+${v.toFixed(2)})</li>`);
+
+    container.innerHTML = `
+        <div class="section-title" style="margin-bottom:0.5rem;">Résumé du profil : ${refName}</div>
+
+        <div style="margin-bottom:1rem;">
+            <strong style="color:#4ade80;">Points forts</strong>
+            <ul>${positives.join('') || "<li>Aucun écart favorable notable</li>"}</ul>
+        </div>
+
+        <div>
+            <strong style="color:#f87171;">Points faibles</strong>
+            <ul>${negatives.join('') || "<li>Aucun écart défavorable notable</li>"}</ul>
+        </div>
+    `;
+}
+
 
 export function updateGlobalStats() {
     let sites;
@@ -398,7 +785,14 @@ export async function loadEstablishment(finess) {
 function closeDetails() {
     document.getElementById('detail-view').style.display = 'none';
     document.getElementById('comparison-view').style.display = 'none';
+
+    // Effacer la valeur du select
+    const refSelect = document.getElementById('comparison-reference');
+    if (refSelect) {
+        refSelect.value = ""; // on remet à vide
+    }
 }
+
 
 window.closeDetails = closeDetails;
 

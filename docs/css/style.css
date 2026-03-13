@@ -782,3 +782,35 @@ input[type="checkbox"] {
 .select2-container--default .select2-selection--single .select2-selection__clear:hover {
     color: #ef4444 !important;
 }
+
+.tab-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.tab-btn.active {
+    background: var(--primary-light);
+    color: #000;
+    font-weight: 600;
+}
+
+.tab-panel {
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
