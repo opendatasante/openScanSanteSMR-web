@@ -10,6 +10,9 @@
     --accent: #22d3ee;
 }
 
+/* ==========================================================================
+   1. Base Styles
+   ========================================================================== */
 body {
     font-family: 'Outfit', sans-serif;
     background-color: var(--bg);
@@ -32,6 +35,40 @@ header {
     margin-bottom: 3rem;
 }
 
+h1 {
+    font-size: 2.5rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: linear-gradient(135deg, #a78bfa 0%, #d8b4fe 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+    color: var(--text-muted);
+    margin: 0.5rem 0 0 0;
+}
+
+.hero-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.6rem;
+}
+
+.badge-beta {
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 1px;
+    vertical-align: middle;
+}
+
+/* ==========================================================================
+   2. Header & Navigation
+   ========================================================================== */
 .hero-title {
     display: flex;
     justify-content: space-between;
@@ -39,7 +76,6 @@ header {
     margin-bottom: 2rem;
 }
 
-/* --- Bouton GitHub Header --- */
 .github-link {
     display: inline-flex;
     align-items: center;
@@ -101,16 +137,9 @@ header {
     box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15) inset;
 }
 
-h1 {
-    font-size: 2.5rem;
-    margin: 0;
-    background: linear-gradient(135deg, #a78bfa 0%, #d8b4fe 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-/* Stats Cards */
+/* ==========================================================================
+   3. Stats Cards
+   ========================================================================== */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -147,6 +176,92 @@ h1 {
     margin-top: 0.5rem;
 }
 
+/* ==========================================================================
+   4. Filters Bar
+   ========================================================================== */
+.filters-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1.2rem;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+    align-items: flex-end;
+}
+
+.filters-bar--medical {
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+.filter-group--medical {
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+.filter-label--medical {
+    color: var(--primary-light);
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.filter-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.filter-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.6rem;
+    border-radius: 8px;
+    outline: none;
+    font-family: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.filter-select:focus {
+    border-color: var(--primary);
+}
+
+.filter-select option {
+    background: var(--bg);
+    color: var(--text);
+}
+
+.filters-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 0.8rem;
+    align-items: center;
+    justify-self: end;
+    margin-bottom: 5px;
+}
+
+.filters-actions__toggle {
+    display: inline-flex;
+    gap: 0.45rem;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+/* ==========================================================================
+   5. Main Content & Tables
+   ========================================================================== */
 .main-content {
     background: var(--card-bg);
     border: 1px solid var(--border);
@@ -189,6 +304,7 @@ table.dataTable tbody tr:hover {
     transform: scale(1.002);
 }
 
+/* DataTables Global UI */
 .dataTables_filter input {
     background: var(--glass);
     border: 1px solid var(--border);
@@ -224,7 +340,9 @@ table.dataTable tbody tr:hover {
     border-radius: 6px !important;
 }
 
-/* Drawer (Détail & Comparaison) */
+/* ==========================================================================
+   6. Drawers & Detail View
+   ========================================================================== */
 #detail-view,
 .drawer {
     position: fixed;
@@ -240,6 +358,23 @@ table.dataTable tbody tr:hover {
     overflow-y: auto;
     border-left: 1px solid var(--border);
     animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drawer--popup {
+    left: 50%;
+    transform: translateX(-50%);
+    height: auto !important;
+    top: 15%;
+    border-radius: 20px;
+    border: 1px solid var(--primary);
+}
+
+#popup-about {
+    width: 400px;
+}
+
+#popup-features {
+    width: 500px;
 }
 
 #comparison-view {
@@ -277,16 +412,6 @@ table.dataTable tbody tr:hover {
     color: var(--text);
 }
 
-.badge {
-    background: var(--glass);
-    border: 1px solid var(--border);
-    padding: 0.3rem 0.8rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    color: var(--accent);
-    white-space: nowrap;
-}
-
 .section-title {
     font-size: 0.9rem;
     font-weight: 600;
@@ -312,8 +437,11 @@ table.dataTable tbody tr:hover {
     margin: 1.5rem 0;
     border: 1px solid var(--border);
     height: 300px;
-    /* Fixed height to prevent Chart.js resizing loop */
     position: relative;
+}
+
+.chart-container--large {
+    height: 350px;
 }
 
 .metric-grid {
@@ -349,103 +477,24 @@ table.dataTable tbody tr:hover {
     color: var(--text-muted);
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--border);
-    padding: 1rem;
-    border-radius: 8px;
-    margin-top: 2rem;
+    padding: 0.2rem;
+    border-radius: 5px;
+    margin: 0.2rem;
 }
 
-::-webkit-scrollbar {
-    width: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
-}
-
-/* New Filter Bar Styles */
-.filters-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding: 1.2rem;
+/* ==========================================================================
+   7. Generic UI Components
+   ========================================================================== */
+.badge {
     background: var(--glass);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    backdrop-filter: blur(8px);
+    padding: 0.3rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: var(--accent);
+    white-space: nowrap;
 }
 
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.filter-label {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 600;
-}
-
-.filter-select {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 0.6rem;
-    border-radius: 8px;
-    outline: none;
-    font-family: inherit;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: border-color 0.2s;
-}
-
-.filter-select:focus {
-    border-color: var(--primary);
-}
-
-.filter-select option {
-    background: var(--bg);
-    color: var(--text);
-}
-
-/* Conteneur actions aligné à droite dans la barre de filtres */
-.filters-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    align-items: center;
-}
-
-/* Si .filters-actions est placé à l'intérieur de .filters-bar, pousse-le à droite */
-.filters-bar .filters-actions {
-    margin-left: auto;
-    display: flex;
-    gap: 0.6rem;
-    align-items: center;
-    justify-self: end;
-}
-
-/* Variante compacte du bouton secondaire (réinitialiser) */
-.btn-secondary.compact,
-.btn.compact {
-    padding: 0.36rem 0.7rem;
-    font-size: 0.88rem;
-    border-radius: 10px;
-}
-
-/* Style par défaut si .btn est utilisé sans classe spécifique */
 .btn {
     background: rgba(255, 255, 255, 0.04);
     color: var(--text);
@@ -457,7 +506,6 @@ table.dataTable tbody tr:hover {
     font-weight: 600;
 }
 
-/* Hover / focus pour .btn */
 .btn:hover,
 .btn:focus {
     background: rgba(255, 255, 255, 0.06);
@@ -466,52 +514,64 @@ table.dataTable tbody tr:hover {
     outline: none;
 }
 
-/* Réutiliser .btn-secondary existant mais ajouter compact */
+.btn-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    background: var(--primary-light);
+    transform: translateY(-1px);
+}
+
 .btn-secondary {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text-muted);
     border: 1px solid var(--border);
-    padding: 0.45rem 0.9rem;
-    border-radius: 12px;
+    padding: 0.5rem 1.2rem;
+    border-radius: 20px;
     font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
 .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.1);
     color: var(--text);
 }
 
-/* Checkbox label styling inside actions */
-.filters-actions__toggle,
-.filters-actions label {
-    display: inline-flex;
-    gap: 0.45rem;
-    align-items: center;
+.btn-secondary.compact,
+.btn.compact {
+    padding: 0.36rem 0.7rem;
+    font-size: 0.88rem;
+    border-radius: 10px;
+}
+
+.tab-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
     color: var(--text-muted);
     font-size: 0.9rem;
-    cursor: pointer;
 }
 
-/* Eviter chevauchement avec Select2 : petit espace à droite des selects */
-.filters-bar .select2-container {
-    margin-right: 0.25rem;
+.tab-btn.active {
+    background: var(--primary-light);
+    color: #000;
+    font-weight: 600;
 }
 
-/* Responsive : sur petits écrans, empiler actions sous les selects */
-@media (max-width: 720px) {
-    .filters-bar {
-        grid-template-columns: 1fr;
-    }
-
-    .filters-bar .filters-actions {
-        margin-left: 0;
-        justify-content: flex-start;
-        padding-top: 0.5rem;
-    }
-}
-
-
-/* Légende Leaflet améliorée */
+/* ==========================================================================
+   8. Map & Comparison
+   ========================================================================== */
 .info.legend {
     background: rgba(255, 255, 255, 0.92);
     padding: 14px 16px;
@@ -549,7 +609,6 @@ table.dataTable tbody tr:hover {
     color: #222;
 }
 
-/* Barre de comparaison flottante */
 #comparison-bar {
     position: fixed;
     bottom: 2rem;
@@ -599,65 +658,66 @@ table.dataTable tbody tr:hover {
     gap: 0.8rem;
 }
 
-.btn-primary {
-    background: var(--primary);
-    color: white;
-    border: none;
-    padding: 0.5rem 1.2rem;
-    border-radius: 20px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+.comparison-duo {
+    margin-top: 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
 }
 
-.btn-primary:hover {
-    background: var(--primary-light);
-    transform: translateY(-1px);
+/* ==========================================================================
+   9. Loaders & Animations
+   ========================================================================== */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(139, 92, 246, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--primary);
+    animation: spin 1s ease-in-out infinite;
+    margin: 2rem auto;
 }
 
-.btn-secondary {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-muted);
-    border: 1px solid var(--border);
-    padding: 0.5rem 1.2rem;
-    border-radius: 20px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }
 
-.btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text);
-}
-
-/* Checkbox Column Styling */
-#main-table td:first-child {
+#detail-loader {
     text-align: center;
+    padding: 4rem 0;
+    color: var(--text-muted);
 }
 
-input[type="checkbox"] {
-    accent-color: var(--primary);
-    cursor: pointer;
-    width: 16px;
-    height: 16px;
+/* ==========================================================================
+   10. Select2 Dark Theme (Consolidated)
+   ========================================================================== */
+.select2-container {
+    max-width: 100% !important;
+    width: 100% !important;
 }
 
-/* --- Select2 Dark Theme Customization --- */
-
-/* Conteneur principal */
+/* Shared baseline for single and multiple */
 .select2-container--default .select2-selection--single,
 .select2-container--default .select2-selection--multiple {
     background: var(--bg) !important;
     border: 1px solid var(--border) !important;
     border-radius: 10px !important;
-    min-height: 42px !important;
+    min-height: 34px !important;
+    /* Standard base height */
     display: flex !important;
     align-items: center !important;
     transition: all 0.2s ease !important;
+    overflow: hidden !important;
 }
 
-/* Focus et Hover */
+.select2-container--default .select2-selection--single {
+    min-height: 42px !important;
+    /* Keep single slightly larger as per original design */
+}
+
+/* Interaction states */
 .select2-container--default.select2-container--focus .select2-selection--single,
 .select2-container--default.select2-container--focus .select2-selection--multiple,
 .select2-container--default .select2-selection--single:hover,
@@ -666,18 +726,90 @@ input[type="checkbox"] {
     box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1) !important;
 }
 
-/* Rendu du texte sélectionné */
-.select2-container--default .select2-selection--single .select2-selection__rendered {
+/* Rendered Area - General */
+.select2-container--default .select2-selection__rendered {
     color: var(--text) !important;
     line-height: inherit !important;
-    padding-left: 12px !important;
+    padding-left: 20px !important;
+    /* Standard padding for airiness */
+    padding-right: 20px !important;
 }
 
+/* Multiselect specific rendered logic (Airy & Wrapping) */
+.select2-container--default .select2-selection--multiple .select2-selection__rendered {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    flex: 1 !important;
+    width: 100% !important;
+    gap: 8px !important;
+    padding: 6px 10px 6px 0 !important;
+    list-style: none !important;
+    margin: 0 !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+}
+
+.select2-container--default .select2-selection--multiple {
+    padding: 0 20px !important;
+    /* External padding for shift */
+}
+
+/* Choices (Chips) */
+.select2-container--default .select2-selection--multiple .select2-selection__choice {
+    background-color: rgba(139, 92, 246, 0.15) !important;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
+    border-radius: 4px !important;
+    color: var(--primary-light) !important;
+    padding: 2px 8px !important;
+    margin: 4px 8px 4px 0 !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    max-width: calc(100% - 40px) !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
+    color: var(--primary-light) !important;
+    margin-right: 5px !important;
+    border: none !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
+    color: #ef4444 !important;
+    background: transparent !important;
+}
+
+/* Search Inline */
+.select2-container--default .select2-selection--multiple .select2-search--inline {
+    flex: 1 1 auto !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.select2-container--default .select2-selection--multiple .select2-search--inline .select2-search__field {
+    margin: 0 !important;
+    line-height: 30px !important;
+    height: 30px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--text) !important;
+    font-family: inherit !important;
+    font-size: 0.9rem !important;
+    vertical-align: middle !important;
+}
+
+/* Placeholder */
 .select2-container--default .select2-selection--single .select2-selection__placeholder {
     color: var(--text-muted) !important;
 }
 
-/* Flèche du dropdown */
+/* Arrow (Single) */
 .select2-container--default .select2-selection--single .select2-selection__arrow {
     height: 40px !important;
     right: 8px !important;
@@ -693,19 +825,17 @@ input[type="checkbox"] {
     border-width: 0 5px 6px 5px !important;
 }
 
-/* Dropdown Menu */
+/* Dropdown styling */
 .select2-dropdown {
     background: rgba(15, 23, 42, 0.95) !important;
     backdrop-filter: blur(12px) !important;
     border: 1px solid var(--primary) !important;
     border-radius: 12px !important;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
-    overflow: hidden !important;
     margin-top: 4px !important;
     z-index: 1001 !important;
 }
 
-/* Champ de recherche dans le dropdown */
 .select2-search--dropdown {
     padding: 10px !important;
 }
@@ -716,15 +846,15 @@ input[type="checkbox"] {
     border-radius: 8px !important;
     color: var(--text) !important;
     padding: 8px 12px !important;
-    outline: none !important;
 }
 
-/* Résultats / Options */
 .select2-results__option {
     padding: 10px 15px !important;
     font-size: 0.9rem !important;
     color: var(--text-muted) !important;
     transition: all 0.2s ease !important;
+    white-space: normal !important;
+    word-break: break-word !important;
 }
 
 .select2-results__option--highlighted[aria-selected],
@@ -739,78 +869,203 @@ input[type="checkbox"] {
     font-weight: 600 !important;
 }
 
-/* Fix for hover over selected item - ensure text isn't "all white" on light background */
-.select2-container--default .select2-results__option--highlighted[aria-selected=true] {
-    background-color: var(--primary-light) !important;
-    color: var(--bg) !important;
-    /* Dark text for better contrast on lighter highlight */
-}
-
-/* Multi-select Tags (Badges) */
-.select2-container--default .select2-selection--multiple .select2-selection__choice {
-    background-color: rgba(139, 92, 246, 0.15) !important;
-    border: 1px solid rgba(139, 92, 246, 0.3) !important;
-    border-radius: 6px !important;
-    color: var(--primary-light) !important;
-    padding: 2px 8px !important;
-    margin-top: 6px !important;
-    margin-left: 6px !important;
-    font-size: 0.8rem !important;
-    font-weight: 500 !important;
-}
-
-.select2-container--default .select2-selection--multiple .select2-selection__choice__remove {
-    color: var(--primary-light) !important;
-    margin-right: 5px !important;
-    border: none !important;
-    transition: color 0.2s !important;
-}
-
-.select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover {
-    color: #ef4444 !important;
-    background: transparent !important;
-}
-
-/* Clear button */
+/* Clear Button */
 .select2-container--default .select2-selection--single .select2-selection__clear,
 .select2-container--default .select2-selection--multiple .select2-selection__clear {
     color: var(--text-muted) !important;
-    margin-right: 25px !important;
     font-size: 1.2rem !important;
+    position: absolute !important;
+    top: 50% !important;
+    right: 5px !important;
+    transform: translateY(-50%) !important;
+    z-index: 10 !important;
+    cursor: pointer !important;
+}
+
+.select2-selection__clear {
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__clear:hover {
     color: #ef4444 !important;
 }
 
-.tab-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 0.4rem 1rem;
-    border-radius: 6px;
+/* ==========================================================================
+   10. Utilities & Global Fixes
+   ========================================================================== */
+#main-table td:first-child {
+    text-align: center;
+}
+
+input[type="checkbox"] {
+    accent-color: var(--primary);
     cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}
+
+/* ==========================================================================
+   11. Footer
+   ========================================================================== */
+footer.app-footer {
+    margin-top: 4rem;
+    padding: 2rem 0;
+    text-align: center;
+    border-top: 1px solid var(--border);
     color: var(--text-muted);
     font-size: 0.9rem;
 }
 
-.tab-btn.active {
-    background: var(--primary-light);
-    color: #000;
+footer.app-footer .made-with {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+footer.app-footer a {
+    color: var(--primary-light);
+    text-decoration: none;
     font-weight: 600;
 }
 
-.tab-panel {
-    animation: fadeIn 0.2s ease;
+footer.app-footer a:hover {
+    text-decoration: underline;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(4px);
+/* ==========================================================================
+   12. Responsive Design
+   ========================================================================== */
+@media (max-width: 1024px) {
+    .container {
+        padding: 1.5rem;
     }
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
+    #detail-view,
+    .drawer {
+        width: 70%;
+    }
+}
+
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.8rem;
+        flex-wrap: wrap;
+    }
+
+    .hero-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+
+    .hero-meta {
+        align-items: flex-start;
+        width: 100%;
+    }
+
+    .view-switch {
+        width: 100%;
+        display: flex;
+    }
+
+    .view-switch button {
+        flex: 1;
+    }
+
+    #detail-view,
+    .drawer {
+        width: 100% !important;
+        border-left: none;
+    }
+
+    .drawer-content,
+    #detail-content {
+        padding: 1.5rem;
+    }
+
+    .drawer--popup {
+        width: calc(100% - 2rem) !important;
+        left: 1rem;
+        transform: none;
+        top: 5%;
+    }
+
+    .stats-grid {
+        gap: 1rem;
+    }
+
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .stat-value {
+        font-size: 1.6rem;
+    }
+
+    .main-content {
+        padding: 1rem;
+    }
+
+    .metric-grid,
+    .comparison-duo {
+        grid-template-columns: 1fr;
+    }
+
+    #comparison-view h2 {
+        font-size: 1.4rem;
+    }
+
+    .chart-container {
+        height: 250px;
+    }
+
+    .chart-container--large {
+        height: 300px;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 1rem;
+    }
+
+    header {
+        margin-bottom: 2rem;
+    }
+
+    .badge {
+        padding: 0.2rem 0.5rem;
+        font-size: 0.7rem;
+    }
+
+    .filters-bar {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+    }
+
+    .filters-actions {
+        margin-left: 0;
+        justify-content: flex-start;
+        width: 100%;
+        flex-wrap: wrap;
     }
 }

@@ -93,7 +93,7 @@ export async function fetchLatestUpdateDate() {
     }
 }
 
-export async function fetchMapActivityData(selectedCms, selectedGns, selectedGmes) {
+export async function fetchMapActivityData(selectedCms, selectedGns, selectedGmes, isAdditive = false) {
     let paths = [];
 
     // On s'assure que ce sont bien des tableaux (arrays)
@@ -101,31 +101,66 @@ export async function fetchMapActivityData(selectedCms, selectedGns, selectedGme
     const gns = Array.isArray(selectedGns) ? selectedGns : (selectedGns ? [selectedGns] : []);
     const gmes = Array.isArray(selectedGmes) ? selectedGmes : (selectedGmes ? [selectedGmes] : []);
 
-    // On parcourt l'arbre pour déterminer les chemins optimaux
-    state.optionsTree.forEach(cm => {
-        if (cms.length > 0 && !cms.includes(cm.value)) return;
-
-        // OPTIMISATION 1
-        if (gns.length === 0 && gmes.length === 0) {
-            paths.push(`${cm.value}`);
-            return;
-        }
-
-        (cm.groupes_nosologiques || []).forEach(gn => {
-            if (gns.length > 0 && !gns.includes(gn.value)) return;
-
-            // OPTIMISATION 2
-            if (gmes.length === 0) {
-                paths.push(`${cm.value}/${gn.value}`);
+    if (isAdditive) {
+        // LOGIQUE ADDITIVE (Mode "Afficher tout") :
+        // On cumule les sélections sans double compte.
+        state.optionsTree.forEach(cm => {
+            const cmSelected = cms.includes(cm.value);
+            if (cmSelected) {
+                // Si CM sélectionnée, on prend le chemin de la CM
+                paths.push(`${cm.value}`);
+                // Et on ne descend pas dans les enfants pour éviter les doublons
                 return;
             }
 
-            (gn.groupes_medico_economiques || []).forEach(gme => {
-                if (gmes.length > 0 && !gmes.includes(gme.value)) return;
-                paths.push(`${cm.value}/${gn.value}/${gme.value}`);
+            (cm.groupes_nosologiques || []).forEach(gn => {
+                const gnSelected = gns.includes(gn.value);
+                if (gnSelected) {
+                    // Si GN sélectionnée et CM parente non sélectionnée
+                    paths.push(`${cm.value}/${gn.value}`);
+                    // On ne descend pas dans les GME pour ce GN
+                    return;
+                }
+
+                (gn.groupes_medico_economiques || []).forEach(gme => {
+                    if (gmes.includes(gme.value)) {
+                        // Si GME sélectionné et ni GN parent ni CM parent sélectionnés
+                        paths.push(`${cm.value}/${gn.value}/${gme.value}`);
+                    }
+                });
             });
         });
-    });
+    } else {
+        // LOGIQUE PAR DEFAUT (Priorité au niveau le plus bas sélectionné) :
+        // Si des GME sont sélectionnés sur toute l'appli, on ne cherche que des GME.
+        // Sinon si des GN sont sélectionnés, on ne cherche que des GN.
+        // Sinon on cherche les CM.
+        state.optionsTree.forEach(cm => {
+            if (cms.length > 0 && !cms.includes(cm.value)) return;
+
+            // Si des GNs ou GMEs sont sélectionnés globalement, on ne s'arrête pas au niveau CM
+            if (gns.length === 0 && gmes.length === 0) {
+                paths.push(`${cm.value}`);
+                return;
+            }
+
+            (cm.groupes_nosologiques || []).forEach(gn => {
+                if (gns.length > 0 && !gns.includes(gn.value)) return;
+
+                // Si des GMEs sont sélectionnés globalement, on ne s'arrête pas au niveau GN
+                if (gmes.length === 0) {
+                    paths.push(`${cm.value}/${gn.value}`);
+                    return;
+                }
+
+                (gn.groupes_medico_economiques || []).forEach(gme => {
+                    if (gmes.length > 0 && !gmes.includes(gme.value)) return;
+                    paths.push(`${cm.value}/${gn.value}/${gme.value}`);
+                });
+            });
+        });
+    }
+
 
     const customData = {};
 

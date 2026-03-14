@@ -2,14 +2,20 @@
 import { state } from './state.js';
 import { fetchInitialData, fetchLatestUpdateDate } from './api.js';
 import { initMap, refreshViews } from './map.js';
-import { populateFilters, applyFilters, updateGlobalStats, loadEstablishment, initActivityFilters, formatStat } from './ui.js';
+import { initUI, updateGlobalStats, wireGlobals } from './ui_main.js';
+import { applyFilters } from './ui_filters.js';
+import { loadEstablishment } from './ui_details.js';
+import { initActivityFilters } from './ui_medical_filters.js';
+import { formatStat } from './ui_utils.js';
+import { openComparison } from './ui_comparison.js';
+
 
 async function init() {
     try {
         await fetchInitialData();
         await fetchLatestUpdateDate();
 
-        populateFilters();
+        initUI();
         initActivityFilters();
 
         // Initialisation DataTables
@@ -127,10 +133,24 @@ async function init() {
         });
 
         $('#btn-compare').on('click', () => {
-            import('./ui.js').then(ui => ui.openComparison());
+            openComparison();
+
         });
 
-        $('.filter-select').on('change', applyFilters);
+        $('.filter-select').not('#filter-cm, #filter-gn, #filter-gme').on('change', applyFilters);
+
+
+        // Popups
+        $('#link-about').on('click', (e) => {
+            e.preventDefault();
+            document.getElementById('popup-about').style.display = 'block';
+        });
+
+        $('#link-features').on('click', (e) => {
+            e.preventDefault();
+            document.getElementById('popup-features').style.display = 'block';
+        });
+
 
     } catch (err) {
         console.error(err);

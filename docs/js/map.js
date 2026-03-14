@@ -1,6 +1,6 @@
 // js/map.js
 import { state } from './state.js';
-import { loadEstablishment } from './ui.js';
+import { loadEstablishment } from './ui_details.js';
 
 let map = null;
 let markersLayer = null;
@@ -167,7 +167,7 @@ function updateMapMarkers(sites) {
         }).addTo(markersLayer);
 
         marker.on("click", () => {
-            import('./ui.js').then(module => module.loadEstablishment(finess));
+            loadEstablishment(finess);
         });
 
         // Formatage intelligent pour la Popup (gestion du cadenas)
