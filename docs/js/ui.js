@@ -1261,7 +1261,6 @@ export function renderDetails(data) {
             const calcHtml = formatStat(calcStat, unit);
 
             // Si filtre actif → on ignore complètement les valeurs officielles
-            // TODO : total avec CM ou GN pour éviter le secret statistique
             if (filters.hasFilter || !off) {
                 return { text: calcHtml, match: true, showOff: false };
             }
@@ -1288,7 +1287,7 @@ export function renderDetails(data) {
             //}
 
             return {
-                text: `${calcHtml} <span style="font-size:0.8em; color:#666">(off. ${offVal})</span>`,
+                text: `${calcHtml} <span style="font-size:0.8em; color:#666">(off. ${offVal.toLocaleString()})</span>`,
                 match: false,
                 showOff: true
             };
@@ -1306,7 +1305,6 @@ export function renderDetails(data) {
                 };
             }
 
-            // TODO : total avec CM ou GN pour éviter le secret statistique
             if (filters.hasFilter || !off || off === "NA") {
                 return { text: `${calc}${unitHtml}`, match: true, showOff: false };
             }
@@ -1327,7 +1325,7 @@ export function renderDetails(data) {
             //}
 
             return {
-                text: `${calc}${unitHtml} <span style="font-size:0.8em; color:#666">(off. ${off})</span>`,
+                text: `${calc}${unitHtml} <span style="font-size:0.8em; color:#666">(off. ${off.toLocaleString()})</span>`,
                 match: false,
                 showOff: true
             };

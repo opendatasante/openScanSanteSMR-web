@@ -2,7 +2,7 @@
 import { state } from './state.js';
 import { fetchInitialData, fetchLatestUpdateDate } from './api.js';
 import { initMap, refreshViews } from './map.js';
-import { populateFilters, applyFilters, updateGlobalStats, loadEstablishment, initActivityFilters } from './ui.js';
+import { populateFilters, applyFilters, updateGlobalStats, loadEstablishment, initActivityFilters, formatStat } from './ui.js';
 
 async function init() {
     try {
@@ -41,23 +41,32 @@ async function init() {
                     }
                 },
                 {
-                    targets: 6, // Notre nouvelle colonne "Journées"
+                    targets: 6, // Notre colonne "Journées"
                     render: function (data, type, row) {
                         const finess = row[1]; // FINESS est à l'index 1
-                        let total = 0;
+                        let val = 0;
+                        let statObj = null;
 
-                        if (state.mapCustomData && state.mapCustomData[finess] && state.mapCustomData[finess].val !== undefined) {
-                            total = state.mapCustomData[finess].val;
+                        // Récupération de la donnée continue (val) ET de l'objet d'incertitude (statObj)
+                        if (state.mapCustomData && state.mapCustomData[finess]) {
+                            val = state.mapCustomData[finess].val ?? 0;
+                            statObj = state.mapCustomData[finess].stat;
                         } else {
-                            total = state.mapping[finess]?.total_journees || 0;
+                            val = state.mapping[finess]?.total_journees || 0;
+                            statObj = state.mapping[finess]?.stat_total;
                         }
 
-                        // Format pour l'affichage visuel
+                        // Format pour l'affichage visuel (le texte rendu dans le HTML)
                         if (type === 'display') {
-                            return total.toLocaleString() + ' j.';
+                            if (statObj) {
+                                // On utilise notre belle fonction de formatage pour afficher "1 à 10 j. 🔒"
+                                return formatStat(statObj, "j.");
+                            }
+                            return val.toLocaleString() + ' j.';
                         }
-                        // Format brut pour le tri interne (DataTables saura classer les nombres)
-                        return total;
+
+                        // Format brut pour le tri interne (DataTables classera correctement 5.5 entre 0 et 11)
+                        return val;
                     }
                 }
             ]
