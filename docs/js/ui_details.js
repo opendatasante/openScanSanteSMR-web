@@ -46,7 +46,7 @@ export async function loadEstablishment(finess) {
         const filePromises = historyFiles.map(file => fetch(config.cdnPrefix + file).then(r => r.json()));
         const allFilesData = await Promise.all(filePromises);
 
-        let merged = { finess, geo: state.mapping[finess], periodes: {}, sources: historyFiles, raison_sociale: state.mapping[finess].reason_sociale || state.mapping[finess].raison_sociale };
+        let merged = { finess, info: state.mapping[finess], periodes: {}, sources: historyFiles, raison_sociale: state.mapping[finess].reason_sociale || state.mapping[finess].raison_sociale };
         allFilesData.forEach(fileData => {
             if (fileData.periodes) {
                 Object.entries(fileData.periodes).forEach(([p, data]) => {
@@ -79,12 +79,68 @@ export function renderDetails(data) {
     document.querySelectorAll('.profile-cb').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
 
     document.getElementById('det-meta-top').innerHTML = `
-    <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
+    <div class="det-meta-row">
         <span class="badge">FINESS ${data.finess}</span>
-        <span class="badge" style="color:var(--primary-light)">${data.geo?.categorie || 'N/A'}</span>
-        <span class="badge" style="color:var(--text-muted)">MàJ ${data.site_updated_at || 'Jan 2026'}</span>
-        <span class="badge" style="background: rgba(139, 92, 246, 0.1); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.2);">Historique : ${data.sources?.length || 0} fichiers</span>
+        <span class="badge badge--highlight">${data.info?.categorie || 'N/A'}</span>
+        <span class="badge badge--muted">MàJ ${data.site_updated_at || 'N/A'}</span>
+        <span class="badge badge--history">Historique : ${data.sources?.length || 0} fichiers</span>
+    </div>
+
+    <div class="det-meta-row det-meta-info">
+        <div class="info-item full">
+            <span class="info-label">Catégorie d'établissement</span>
+            <span class="info-value">${data.info?.libcategetab || 'Catégorie inconnue'}</span>
+        </div>
+
+        <div class="info-item full">
+            <span class="info-label">Adresse</span>
+            <span class="info-value">${data.info?.adresse || 'Adresse inconnue'}</span>
+        </div>
+
+        <div class="info-item">
+            <span class="info-label">Commune</span>
+            <span class="info-value">${data.info?.com_name || 'N/A'}</span>
+        </div>
+
+        <div class="info-item">
+            <span class="info-label">EPCI</span>
+            <span class="info-value">${data.info?.epci_name || 'N/A'}</span>
+        </div>
+
+        <div class="info-item full">
+            <span class="info-label">Téléphone</span>
+            <span class="info-value">${data.info?.telephone || 'Téléphone inconnu'}</span>
+        </div>
+
+        <div class="info-item full">
+            <span class="info-label">Localisation</span>
+            <span class="info-value">${data.info?.latitude + ',' + data.info?.longitude || 'N/A'}</span>
+        </div>
+
+        <div class="info-item">
+            <span class="info-label">Date ouverture</span>
+            <span class="info-value">${data.info?.dateouv || 'N/A'}</span>
+        </div>
+
+        <div class="info-item">
+            <span class="info-label">Date autorisation</span>
+            <span class="info-value">${data.info?.dateautor || 'N/A'}</span>
+        </div>
+    </div>
+
+    <div class="det-meta-row">
+        <div class="badge-row">
+            <span class="badge">EJ ${data.info?.nofinessej || 'N/A'}</span>
+            <span class="badge badge--highlight">SIRET ${data.info?.siret || 'N/A'}</span>
+            <span class="badge badge--muted">APE ${data.info?.codeape || 'N/A'}</span>
+        </div>
+
+        <div class="badge-row">
+            <span class="badge badge--history">SPH : ${data.info?.libsph || 'N/A'}</span>
+            <span class="badge badge--history">Mode de financement : ${data.info?.libmft || 'N/A'}</span>
+        </div>
     </div>`;
+
 
     const baseTitle = data.raison_sociale || "Établissement inconnu";
     const isFiltered = filters?.hasFilter === true;
