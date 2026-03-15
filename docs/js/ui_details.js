@@ -365,13 +365,13 @@ export function renderDetails(data) {
             <div class="metric-label">Sexe Ratio <span style="font-size:0.7em; color: var(--text-muted);">(évolution ▶)</span></div>
             <div class="metric-value">${compareAvg(avgSexe, official.sexe_ratio, "% H").text}</div>
         </div>
-        <div class="metric-card" style="cursor: pointer;" onclick="window.showIndicatorTrend('avq_physique', 'AVQ Physique', '/4')">
+        <div class="metric-card" style="cursor: pointer;" onclick="window.showIndicatorTrend('avq_physique', 'AVQ Physique', '/16')">
             <div class="metric-label">AVQ Physique <span style="font-size:0.7em; color: var(--text-muted);">(évolution ▶)</span></div>
-            <div class="metric-value">${compareAvg(avgAVQP, official.avq_physique, "/4").text}</div>
+            <div class="metric-value">${compareAvg(avgAVQP, official.avq_physique, "/16").text}</div>
         </div>
-        <div class="metric-card" style="cursor: pointer;" onclick="window.showIndicatorTrend('avq_relationnel', 'AVQ Relationnel', '/4')">
+        <div class="metric-card" style="cursor: pointer;" onclick="window.showIndicatorTrend('avq_relationnel', 'AVQ Relationnel', '/16')">
             <div class="metric-label">AVQ Relationnel <span style="font-size:0.7em; color: var(--text-muted);">(évolution ▶)</span></div>
-            <div class="metric-value">${compareAvg(avgAVQR, official.avq_relationnel, "/4").text}</div>
+            <div class="metric-value">${compareAvg(avgAVQR, official.avq_relationnel, "/16").text}</div>
         </div>
         <div class="metric-card" style="cursor: pointer;" onclick="window.showIndicatorTrend('nb_actes_csarr', 'Actes CSARR', '/j.')">
             <div class="metric-label">Actes CSARR <span style="font-size:0.7em; color: var(--text-muted);">(évolution ▶)</span></div>
@@ -383,8 +383,8 @@ export function renderDetails(data) {
             let parts = [];
             if (age && !isNaN(parseFloat(age))) parts.push(`Âge moyen: ${parseFloat(age).toFixed(2)} ans`);
             if (sexe && !isNaN(parseFloat(sexe))) parts.push(`Sexe Ratio: ${parseFloat(sexe).toFixed(2)}% H`);
-            if (avqp && !isNaN(parseFloat(avqp))) parts.push(`AVQ Physique: ${parseFloat(avqp).toFixed(2)} /4`);
-            if (avqr && !isNaN(parseFloat(avqr))) parts.push(`AVQ Relationnel: ${parseFloat(avqr).toFixed(2)} /4`);
+            if (avqp && !isNaN(parseFloat(avqp))) parts.push(`AVQ Physique: ${parseFloat(avqp).toFixed(2)} /16`);
+            if (avqr && !isNaN(parseFloat(avqr))) parts.push(`AVQ Relationnel: ${parseFloat(avqr).toFixed(2)} /16`);
             if (csarr && !isNaN(parseFloat(csarr))) parts.push(`Actes CSARR: ${parseFloat(csarr).toFixed(2)} /j.`);
             if (parts.length === 0) return '';
             return `<span title="Indicateurs pour '${title.replace(/"/g, '&quot;')}':&#10;${parts.join('&#10;')}" style="cursor:help; font-size: 0.9em; vertical-align: middle; filter: grayscale(1); opacity: 0.6; margin-left: 0.3rem;">ℹ️</span>`;
@@ -501,15 +501,15 @@ export function updateChart(labels, dataArr, hcArr, hpArr) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { 
-                legend: { 
-                    position: 'bottom', 
-                    labels: { 
-                        color: '#94a3b8', 
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#94a3b8',
                         boxWidth: window.innerWidth < 768 ? 8 : 12,
                         font: { size: window.innerWidth < 768 ? 9 : 11 }
-                    } 
-                } 
+                    }
+                }
             },
             scales: {
                 y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: window.innerWidth < 768 ? 9 : 11 } } },
@@ -555,16 +555,16 @@ window.showIndicatorTrend = function (field, label, unit) {
     indicatorTrendChartInstance = new Chart(ctx, {
         type: 'line',
         data: { labels: pd.labels, datasets: [{ label, data: seriesData, borderColor: '#38bdf8', tension: 0.3 }] },
-        options: { 
-            responsive: true, 
+        options: {
+            responsive: true,
             maintainAspectRatio: false,
-            plugins: { 
-                legend: { 
-                    labels: { 
-                        color: '#94a3b8', 
-                        font: { size: window.innerWidth < 768 ? 9 : 11 } 
-                    } 
-                } 
+            plugins: {
+                legend: {
+                    labels: {
+                        color: '#94a3b8',
+                        font: { size: window.innerWidth < 768 ? 9 : 11 }
+                    }
+                }
             },
             scales: {
                 y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: window.innerWidth < 768 ? 9 : 11 } } },

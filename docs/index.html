@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenScanSante SMR - Dashboard</title>
+    <title>OpenScanSanté SMR</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <link rel="stylesheet" type="text/css"
@@ -21,11 +21,11 @@
             <div class="hero-title">
                 <div class="hero-text">
                     <h1>
-                        OpenScanSante SMR
+                        OpenScanSanté SMR
                         <span class="badge badge-beta">BÊTA</span>
                     </h1>
                     <p class="hero-subtitle">
-                        Observatoire interactif des données d'activité hospitalière
+                        Observatoire interactif des données d'activité des établissements
                     </p>
                 </div>
 
@@ -38,7 +38,7 @@
                                 d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
                             </path>
                         </svg>
-                        opendatasante
+                        Made with <span style="color: #f43f5e;">♥</span> by opendatasante
                     </a>
 
                     <!-- Badge de mise à jour -->
@@ -301,8 +301,7 @@
 
     <footer class="app-footer">
         <div class="made-with">
-            v1.0 - Made with <span style="color: #f43f5e;">♥</span> by
-            <a href="https://github.com/opendatasante" target="_blank">opendatasante</a>
+            v1.0 - 2026 - opendatasante
         </div>
         <div style="margin-top: 1rem; display: flex; justify-content: center; gap: 2rem;">
             <a href="#" id="link-about" style="font-size: 0.85rem; color: var(--text-muted);">Qui sommes-nous ?</a>
@@ -319,11 +318,13 @@
                 <strong>opendatasante</strong> est un collectif passionné par la transparence des données de santé en
                 France.
                 Notre mission est de rendre les données publiques (PMSI, SAE, etc.) accessibles, lisibles et
-                exploitables
-                par tous les acteurs du système de santé, les chercheurs et les citoyens.
+                exploitables par tous les acteurs du système de santé, les chercheurs et les citoyens.
             </p>
             <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted);">
                 Ce projet est entièrement open-source et collaboratif.
+            </p>
+            <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted);">
+                Si le projet vous plaît, n'hésitez pas à nous contacter.
             </p>
         </div>
     </div>
@@ -334,19 +335,26 @@
             <span class="close-btn"
                 onclick="document.getElementById('popup-features').style.display='none'">&times;</span>
             <div class="section-title">Fonctionnalités disponibles</div>
+            <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted);">
+                openScanSanté, c'est les données de ScanSanté mais c'est bien plus encore :
+            </p>
             <ul style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted); padding-left: 1.2rem;">
                 <li><strong>Exploration Géographique :</strong> Visualisez les établissements sur une carte interactive
-                    avec des indicateurs de volume.</li>
-                <li><strong>Filtrage Avancé :</strong> Filtrez par région, département, secteur ou catégories médicales
-                    (CM, GN, GME).</li>
-                <li><strong>Détails Établissement :</strong> Consultez l'historique d'activité, le profil des patients
-                    et les indicateurs médico-économiques.</li>
-                <li><strong>Comparaison Multi-sites :</strong> Sélectionnez plusieurs établissements pour comparer leurs
-                    activités et profils.</li>
-                <li><strong>Analyse de Profil :</strong> Comparez le profil d'un établissement par rapport à la moyenne
-                    nationale ou à un sous-ensemble filtré.</li>
+                    avec des indicateurs de volume d'activité.</li>
+                <li><strong>Classement des Établissements :</strong> Classez les établissements par volume d'activité.
+                </li>
+                <li><strong>Filtrage Avancé :</strong> Filtrez par région, département, secteur ou filtres
+                    médico-économiques
+                    simples, multiples ou combinés.</li>
+                <li><strong>Détails Établissement :</strong> Consultez l'historique d'activité (si présent), le profil
+                    des patients
+                    et les indicateurs médico-économiques (CM, GN, GME).</li>
                 <li><strong>Evolution Temporelle :</strong> Visualisez les tendances des indicateurs sur plusieurs
-                    périodes.</li>
+                    périodes (si historique disponible).</li>
+                <li><strong>Comparaison Multi-sites :</strong> Sélectionnez plusieurs établissements pour comparer leurs
+                    activités sur un graphique et leurs profils dans un radar. Sélectionnez un établissement de
+                    référence
+                    pour comparer les écarts avec la moyenne des autres établissements.</li>
             </ul>
         </div>
     </div>

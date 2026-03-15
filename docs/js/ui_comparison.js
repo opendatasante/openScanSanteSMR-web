@@ -250,11 +250,11 @@ export function renderComparison(allData) {
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
                     <span style="font-size: 0.8rem; color: var(--text-muted);">AVQ physique</span>
-                    <span style="font-weight: 600;">${avqp !== "N/C" ? avqp + "/4" : "N/C 🔒"}</span>
+                    <span style="font-weight: 600;">${avqp !== "N/C" ? avqp + "/16" : "N/C 🔒"}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
                     <span style="font-size: 0.8rem; color: var(--text-muted);">AVQ relationnel</span>
-                    <span style="font-weight: 600;">${avqr !== "N/C" ? avqr + "/4" : "N/C 🔒"}</span>
+                    <span style="font-weight: 600;">${avqr !== "N/C" ? avqr + "/16" : "N/C 🔒"}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.4rem;">
                     <span style="font-size: 0.8rem; color: var(--text-muted);">Actes CSARR</span>
