@@ -1652,7 +1652,7 @@
     "reg_name": "BOURGOGNE-FRANCHE-COMTÉ",
     "dep_code": "39",
     "dep_name": "JURA",
-    "raison_sociale": "MAISON SOINS ADLCA BLETTERANS",
+    "raison_sociale": "MAISON SOINS BLETTERANS",
     "categorie": "PSPH/EBNL"
   },
   "580006286": {
@@ -7812,7 +7812,7 @@
     "reg_name": "NORMANDIE",
     "dep_code": "76",
     "dep_name": "SEINE-MARITIME",
-    "raison_sociale": "POLYCLINIQUE MEGIVAL",
+    "raison_sociale": "CLINIQUE DE LA COTE D'ALBATRE",
     "categorie": "Privé"
   },
   "760029017": {
@@ -11540,7 +11540,7 @@
     "reg_name": "PROVENCE-ALPES-CÔTE D'AZUR",
     "dep_code": "06",
     "dep_name": "ALPES-MARITIMES",
-    "raison_sociale": "LA MAISON DU MINEUR",
+    "raison_sociale": "CLINIQUE DES MINES",
     "categorie": "PSPH/EBNL"
   },
   "060005469": {
@@ -12108,7 +12108,7 @@
     "reg_name": "PROVENCE-ALPES-CÔTE D'AZUR",
     "dep_code": "13",
     "dep_name": "BOUCHES-DU-RHÔNE",
-    "raison_sociale": "MAISON DE REPOS ET DE CONVALESCENCE FERNANDE BERGER",
+    "raison_sociale": "HÔPITAL SAINT JOSEPH MONTVAL",
     "categorie": "PSPH/EBNL"
   },
   "130785389": {
@@ -12544,4 +12544,3 @@
     "dep_name": "PYRÉNÉES-ATLANTIQUES"
   }
 }
-
