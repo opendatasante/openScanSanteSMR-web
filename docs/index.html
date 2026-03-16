@@ -164,17 +164,16 @@
             <div id="det-meta-top" style="margin-bottom: 0.5rem;"></div>
             <h2 id="det-name" style="margin: 0 0 1.5rem 0; font-size: 1.8rem; line-height: 1.2;">...</h2>
 
-            <div class="section-title">Volume global d'activité</div>
-            <div class="chart-container">
-                <h4 style="margin: 0 0 1.2rem 0; font-weight: 400; font-size: 0.85rem; color: var(--text-muted);">
-                    Journées cumulées</h4>
-                <canvas id="detailChart"></canvas>
+            <div class="section-title">Données historiques</div>
+            <div id="det-historical" class="metric-grid">
+                <div class="chart-container">Volume global d'activité
+                    <h4 style="margin: 0 0 1.2rem 0; font-weight: 400; font-size: 0.85rem; color: var(--text-muted);">
+                        Journées cumulées</h4>
+                    <canvas id="detailChart"></canvas>
+                </div>
+                <div id="det-metrics" class="metric-grid">Dernière Période Connue</div>
             </div>
 
-            <div class="section-title">Dernière Période Connue</div>
-            <div id="det-metrics" class="metric-grid">
-                <!-- Rempli en JS -->
-            </div>
 
             <div class="section-title">Indicateurs Spécialisés SMR (dernière période)</div>
             <div id="det-smr-metrics" class="metric-grid">
@@ -191,6 +190,61 @@
                 </div>
                 <div class="chart-container" style="margin-bottom: 1rem;">
                     <canvas id="indicatorTrendChart" height="130"></canvas>
+                </div>
+            </div>
+
+            <div class="section-title">Comparaison Globale (<span id="detail-compare-badge"
+                    style="color: var(--primary-light); font-size: 0.9em; font-weight: 500;">...</span>)</div>
+            <div id="global-compare-section" style="margin-bottom: 2rem;">
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <div class="filter-group" style="flex: 1;">
+                        <label class="filter-label" style="font-size: 0.8rem; margin-bottom: 0.2rem;">Échelle</label>
+                        <select id="detail-compare-scale" class="filter-select"
+                            style="padding: 0.4rem; font-size: 0.85rem;">
+                            <option value="national">Nationale</option>
+                            <option value="regional">Régionale</option>
+                            <option value="dept" selected>Départementale</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" style="flex: 1;">
+                        <label class="filter-label" style="font-size: 0.8rem; margin-bottom: 0.2rem;">Secteur /
+                            Catégorie</label>
+                        <select id="detail-compare-sector" class="filter-select"
+                            style="padding: 0.4rem; font-size: 0.85rem;">
+                            <option value="all">Tous (Public + Privé)</option>
+                            <option value="same" selected>Même que l'étab.</option>
+                            <option value="public">Secteur Public / CH</option>
+                            <option value="prive">Secteur Privé</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Loader specific to comparison -->
+                <div id="detail-compare-loader" style="display: none; padding: 1.5rem; text-align: center;">
+                    <div class="spinner" style="width: 20px; height: 20px; margin: 0 auto 0.5rem auto;"></div>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0;">Calcul de la moyenne en cours...
+                    </p>
+                </div>
+                <div id="detail-compare-content" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="chart-container" style="padding: 1rem;">
+                            <h4
+                                style="margin: 0 0 0.8rem 0; font-weight: 400; font-size: 0.8rem; color: var(--text-muted);">
+                                Indicateurs cliniques vs Moyenne
+                            </h4>
+                            <canvas id="detailCompareRadarChart" height="200"></canvas>
+                        </div>
+                        <div class="chart-container" style="padding: 1rem;">
+                            <h4
+                                style="margin: 0 0 0.8rem 0; font-weight: 400; font-size: 0.8rem; color: var(--text-muted);">
+                                Évolution des journées (vs Moyenne)
+                            </h4>
+                            <canvas id="detailCompareVolumeChart" height="200"></canvas>
+                        </div>
+                    </div>
+                    <div id="detail-compare-summary"
+                        style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
+                        <!-- Filled by JS -->
+                    </div>
                 </div>
             </div>
 
@@ -301,7 +355,7 @@
 
     <footer class="app-footer">
         <div class="made-with">
-            v1.0 - 2026 - opendatasante
+            v1.1 - 2026 - opendatasante
         </div>
         <div style="margin-top: 1rem; display: flex; justify-content: center; gap: 2rem;">
             <a href="#" id="link-about" style="font-size: 0.85rem; color: var(--text-muted);">Qui sommes-nous ?</a>

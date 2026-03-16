@@ -1,12 +1,15 @@
 // js/ui_details.js
 import { state, config } from './state.js';
-import { fetchHistory } from './api.js';
+import { fetchHistory, fetchRowsForMedicalFilters } from './api.js';
 import { parseDays, addStats, formatStat } from './ui_utils.js';
 import { captureMedicalFilters } from './ui_medical_filters.js';
 
 let mainChartInstance = null;
 let profilingChartInstance = null;
 let indicatorTrendChartInstance = null;
+let detailCompareRadarChartInstance = null;
+let detailCompareVolumeChartInstance = null;
+
 const isTotal = (k) => k && String(k).trim().toLowerCase() === 'total';
 
 /**
@@ -76,6 +79,7 @@ export function renderDetails(data) {
 
     document.getElementById('indicator-trend-section').style.display = 'none';
     document.getElementById('profiling-section').style.display = 'none';
+    document.getElementById('global-compare-section').style.display = 'none';
     document.querySelectorAll('.profile-cb').forEach(cb => { cb.checked = false; cb.indeterminate = false; });
 
     document.getElementById('det-meta-top').innerHTML = `
@@ -446,6 +450,11 @@ export function renderDetails(data) {
             return `<span title="Indicateurs pour '${title.replace(/"/g, '&quot;')}':&#10;${parts.join('&#10;')}" style="cursor:help; font-size: 0.9em; vertical-align: middle; filter: grayscale(1); opacity: 0.6; margin-left: 0.3rem;">ℹ️</span>`;
         };
 
+        // Render Comparison Chart immediately if possible
+        window.currentDetailEtabFiness = data.finess;
+        document.getElementById('global-compare-section').style.display = 'block';
+        updateDetailComparison();
+
         let breakdownHtml = '';
         const sortedCMs = Object.entries(fullBreakdown).sort((a, b) => b[1].total.mid - a[1].total.mid);
         sortedCMs.forEach(([cmId, cmData]) => {
@@ -756,3 +765,375 @@ function updateProfileChart() {
     });
 }
 window.updateProfileChart = updateProfileChart;
+
+export async function updateDetailComparison() {
+    const finess = window.currentDetailEtabFiness;
+    if (!finess) return;
+
+    const etabInfo = state.mapping[finess];
+    if (!etabInfo) return;
+
+    const scale = document.getElementById('detail-compare-scale').value;
+    const sector = document.getElementById('detail-compare-sector').value;
+    const filters = captureMedicalFilters();
+
+    const loader = document.getElementById('detail-compare-loader');
+    const content = document.getElementById('detail-compare-content');
+    const badge = document.getElementById('detail-compare-badge');
+
+    loader.style.display = 'block';
+    content.style.display = 'none';
+    badge.textContent = "Calcul...";
+
+    try {
+        let rowsToProcess = [];
+
+        if (!filters.hasFilter) {
+            // Pas de filtre médical : on prend les totaux officiels
+            rowsToProcess = Object.values(state.officialTotals);
+        } else {
+            // On récupère les lignes pour la combinaison médicale exacte selectionnée
+            rowsToProcess = await fetchRowsForMedicalFilters(filters);
+        }
+
+        // --- Filtrage Géo ---
+        let filteredRows = [];
+        if (scale === 'national') {
+            filteredRows = rowsToProcess;
+        } else if (scale === 'regional') {
+            filteredRows = rowsToProcess.filter(r => {
+                const sInfo = state.mapping[r.finess];
+                return sInfo && sInfo.reg_code === etabInfo.reg_code;
+            });
+        } else if (scale === 'dept') {
+            filteredRows = rowsToProcess.filter(r => {
+                const sInfo = state.mapping[r.finess];
+                return sInfo && sInfo.dep_code === etabInfo.dep_code;
+            });
+        }
+
+        // --- Filtrage Secteur ---
+        const isPublic = (cat) => {
+            const u = (cat || '').toUpperCase();
+            return !u.includes('PRIVÉ') && !u.includes('PRIVE') && u !== 'OQN' && u !== '';
+        };
+        const etabIsPublic = isPublic(etabInfo.categorie);
+
+        if (sector === 'public') {
+            filteredRows = filteredRows.filter(r => {
+                const sInfo = state.mapping[r.finess];
+                return sInfo && isPublic(sInfo.categorie);
+            });
+        } else if (sector === 'prive') {
+            filteredRows = filteredRows.filter(r => {
+                const sInfo = state.mapping[r.finess];
+                return sInfo && !isPublic(sInfo.categorie) && sInfo.categorie !== '';
+            });
+        } else if (sector === 'same') {
+            filteredRows = filteredRows.filter(r => {
+                const sInfo = state.mapping[r.finess];
+                if (!sInfo) return false;
+                return isPublic(sInfo.categorie) === etabIsPublic;
+            });
+        }
+
+        // Ne pas s'inclure soi-même dans la moyenne (pour comparer "Les Autres")
+        filteredRows = filteredRows.filter(r => r.finess !== finess);
+
+        // --- Calcul de la moyenne pondérée ---
+        let wSumAge = 0, dAge = 0, wSumSexe = 0, dSexe = 0, wSumAvqp = 0, dAvqp = 0, wSumAvqr = 0, dAvqr = 0, wSumCsarr = 0, dCsarr = 0;
+
+        filteredRows.forEach(row => {
+            let days = 0;
+            if (row.nb_journees_total && row.nb_journees_total !== "NA") {
+                days = parseDays(row.nb_journees_total).mid;
+            } else {
+                days = parseDays(row.nb_journees_hc).mid + parseDays(row.nb_journees_hp).mid;
+            }
+
+            if (days > 0) {
+                const age = parseFloat(row.age_moyen); if (!isNaN(age)) { wSumAge += age * days; dAge += days; }
+                const sexe = parseFloat(row.sexe_ratio); if (!isNaN(sexe)) { wSumSexe += sexe * days; dSexe += days; }
+                const avqp = parseFloat(row.avq_physique); if (!isNaN(avqp)) { wSumAvqp += avqp * days; dAvqp += days; }
+                const avqr = parseFloat(row.avq_relationnel); if (!isNaN(avqr)) { wSumAvqr += avqr * days; dAvqr += days; }
+                const csarr = parseFloat(row.nb_actes_csarr); if (!isNaN(csarr)) { wSumCsarr += csarr * days; dCsarr += days; }
+            }
+        });
+
+        const avg = {
+            age: dAge > 0 ? wSumAge / dAge : null,
+            sexe: dSexe > 0 ? wSumSexe / dSexe : null,
+            avqp: dAvqp > 0 ? wSumAvqp / dAvqp : null,
+            avqr: dAvqr > 0 ? wSumAvqr / dAvqr : null,
+            csarr: dCsarr > 0 ? wSumCsarr / dCsarr : null
+        };
+
+        // --- Récupérer les valeurs de l'établissement lui-même pour ce filtre ---
+        const g = window.globalMetrics || {};
+        const etabVals = {
+            age: parseFloat(g.avgAge) || null,
+            sexe: parseFloat(g.avgSexe) || null,
+            avqp: parseFloat(g.avgAVQP) || null,
+            avqr: parseFloat(g.avgAVQR) || null,
+            csarr: parseFloat(g.avgCSARR) || null
+        };
+
+        // --- Dessiner le radar ---
+        const labels = ['Âge (ans)', 'Sexe Ratio (%H)', 'AVQ Physique', 'AVQ Relationnel', 'CSARR'];
+        const etabRaw = [etabVals.age, etabVals.sexe, etabVals.avqp, etabVals.avqr, etabVals.csarr];
+        const avgRaw = [avg.age, avg.sexe, avg.avqp, avg.avqr, avg.csarr];
+
+        const maxes = [100, 100, 16, 16, 5]; // Les plafonds du radar
+        const etabNorm = etabRaw.map((v, i) => v !== null && !isNaN(v) ? (v / maxes[i]) * 100 : null);
+        const avgNorm = avgRaw.map((v, i) => v !== null && !isNaN(v) ? (v / maxes[i]) * 100 : null);
+
+        const ctx = document.getElementById('detailCompareRadarChart').getContext('2d');
+        if (detailCompareRadarChartInstance) detailCompareRadarChartInstance.destroy();
+
+        detailCompareRadarChartInstance = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: etabInfo.reason_sociale || etabInfo.raison_sociale || finess,
+                        data: etabNorm,
+                        rawValues: etabRaw,
+                        backgroundColor: 'rgba(56, 189, 248, 0.3)',
+                        borderColor: '#38bdf8',
+                        borderWidth: 2,
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'Moyenne de référence',
+                        data: avgNorm,
+                        rawValues: avgRaw,
+                        backgroundColor: 'rgba(139, 92, 246, 0.3)',
+                        borderColor: '#a78bfa',
+                        borderWidth: 2,
+                        pointRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        min: 0, max: 100,
+                        ticks: { display: false },
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        angleLines: { color: 'rgba(255,255,255,0.1)' },
+                        pointLabels: { color: '#cbd5e1', font: { size: 11 } }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#94a3b8', font: { size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                const val = context.dataset.rawValues[context.dataIndex];
+                                if (val === null || val === undefined || isNaN(val)) return `${context.dataset.label} : N/C`;
+                                return `${context.dataset.label} : ${val.toFixed(2)}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // --- Graphique Temporel des Journées ---
+        const allPeriodes = window.allPeriodes;
+        if (allPeriodes && allPeriodes.labels && allPeriodes.labels.length > 0) {
+            const sumForPeriodFiltered = (periodData, field) => {
+                if (!periodData) return { min: 0, max: 0, isExact: true, mid: 0 };
+                if (!filters.hasFilter) {
+                    const off = periodData.total || {};
+                    if (off[field] && off[field] !== "NA") return parseDays(off[field]);
+                }
+                let total = { min: 0, max: 0, isExact: true, mid: 0 };
+                Object.entries(periodData).forEach(([catMaj, gns]) => {
+                    if (catMaj === 'total') return;
+                    if (filters.selCms.length > 0 && !filters.selCms.includes(catMaj)) return;
+                    const cmOff = gns.total || {};
+                    const isCmFilteredDeeper = filters.selGns.some(id => gns[id]) || filters.selGmes.some(id => Object.values(gns).some(gn => gn[id]));
+                    if (!isCmFilteredDeeper && cmOff[field] && cmOff[field] !== "NA") {
+                        total = addStats(total, parseDays(cmOff[field]));
+                        return;
+                    }
+                    const hasGnFilterInThisCm = filters.selGns.some(id => gns[id]);
+                    Object.entries(gns || {}).forEach(([gnId, gmes]) => {
+                        if (gnId === 'total') return;
+                        if (hasGnFilterInThisCm && !filters.selGns.includes(gnId)) return;
+                        const gnOff = gmes.total || {};
+                        const hasGmeFilterInThisGn = filters.selGmes.some(id => gmes[id]);
+                        if (!hasGmeFilterInThisGn && gnOff[field] && gnOff[field] !== "NA") {
+                            total = addStats(total, parseDays(gnOff[field]));
+                            return;
+                        }
+                        Object.entries(gmes || {}).forEach(([gmeId, code]) => {
+                            if (gmeId === 'total') return;
+                            if (filters.selGmes.length > 0 && !filters.selGmes.includes(gmeId)) return;
+                            total = addStats(total, parseDays(code[field]));
+                        });
+                    });
+                });
+                return total;
+            };
+
+            // Données établissement par période
+            const etabTotalData = allPeriodes.labels.map(p => {
+                const pData = allPeriodes.rawData[p] || {};
+                const hc = sumForPeriodFiltered(pData, 'nb_journees_hc');
+                const hp = sumForPeriodFiltered(pData, 'nb_journees_hp');
+                return addStats(hc, hp).mid || null;
+            });
+            const etabHcData = allPeriodes.labels.map(p => {
+                const pData = allPeriodes.rawData[p] || {};
+                return sumForPeriodFiltered(pData, 'nb_journees_hc').mid || null;
+            });
+            const etabHpData = allPeriodes.labels.map(p => {
+                const pData = allPeriodes.rawData[p] || {};
+                return sumForPeriodFiltered(pData, 'nb_journees_hp').mid || null;
+            });
+
+            // Moyenne de référence (dernière période, depuis filteredRows)
+            let refTotalSum = 0, refHcSum = 0, refHpSum = 0, refCount = 0;
+            filteredRows.forEach(row => {
+                const hc = parseDays(row.nb_journees_hc).mid;
+                const hp = parseDays(row.nb_journees_hp).mid;
+                const t = (row.nb_journees_total && row.nb_journees_total !== 'NA') ? parseDays(row.nb_journees_total).mid : hc + hp;
+                if (t > 0) {
+                    refTotalSum += t;
+                    refHcSum += hc;
+                    refHpSum += hp;
+                    refCount++;
+                }
+            });
+            const refTotalAvg = refCount > 0 ? refTotalSum / refCount : null;
+            const refHcAvg = refCount > 0 ? refHcSum / refCount : null;
+            const refHpAvg = refCount > 0 ? refHpSum / refCount : null;
+
+
+            // 🔥 NOUVEAU : stockage par période (comme pour l’établissement)
+            const refTotalData = allPeriodes.labels.map(() => refTotalAvg);
+            const refHcData = allPeriodes.labels.map(() => refHcAvg);
+            const refHpData = allPeriodes.labels.map(() => refHpAvg);
+
+            const volumeDatasets = [
+                {
+                    label: 'Total',
+                    data: etabTotalData,
+                    borderColor: '#a78bfa',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    fill: true, tension: 0.3, borderWidth: 2, pointRadius: 3
+                },
+                {
+                    label: 'HC',
+                    data: etabHcData,
+                    borderColor: '#34d399',
+                    borderDash: [4, 4],
+                    fill: false, tension: 0.3, borderWidth: 1.5, pointRadius: 2
+                },
+                {
+                    label: 'HP',
+                    data: etabHpData,
+                    borderColor: '#f59e0b',
+                    borderDash: [4, 4],
+                    fill: false, tension: 0.3, borderWidth: 1.5, pointRadius: 2
+                },
+                {
+                    label: 'Moy. réf. (Total)',
+                    data: refTotalData,
+                    borderColor: 'rgba(139, 92, 246, 0.4)',
+                    borderDash: [8, 4],
+                    fill: true, tension: 0, borderWidth: 1, pointRadius: 5
+                },
+                {
+                    label: 'Moy. réf. (HC)',
+                    data: refHcData,
+                    borderColor: 'rgba(52, 211, 153, 0.4)',
+                    borderDash: [8, 4],
+                    fill: true, tension: 0, borderWidth: 1, pointRadius: 5
+                },
+                {
+                    label: 'Moy. réf. (HP)',
+                    data: refHpData,
+                    borderColor: 'rgba(245, 158, 11, 0.4)',
+                    borderDash: [8, 4],
+                    fill: true, tension: 0, borderWidth: 1, pointRadius: 5
+                }
+            ];
+
+            const ctxVol = document.getElementById('detailCompareVolumeChart').getContext('2d');
+            if (detailCompareVolumeChartInstance) detailCompareVolumeChartInstance.destroy();
+            detailCompareVolumeChartInstance = new Chart(ctxVol, {
+                type: 'line',
+                data: { labels: allPeriodes.labels, datasets: volumeDatasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', boxWidth: 8, font: { size: 9 } }
+                        }
+                    },
+                    scales: {
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8', font: { size: 9 } } },
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 9 } } }
+                    }
+                }
+            });
+        }
+
+        // --- Résumé Textuel ---
+        const etabTitles = new Set((filteredRows || []).map(r => r.finess));
+        badge.textContent = `${etabTitles.size} établ. pris en compte`;
+
+        let summaryHtml = '';
+        if (etabTitles.size === 0) {
+            summaryHtml = `<em>Aucun autre établissement ne correspond à ces critères pour former une moyenne de référence.</em>`;
+        } else {
+            const diffs = {
+                'Âge moyen': etabVals.age && avg.age ? etabVals.age - avg.age : 0,
+                'Sexe (%H)': etabVals.sexe && avg.sexe ? etabVals.sexe - avg.sexe : 0,
+                'AVQ Physique': etabVals.avqp && avg.avqp ? etabVals.avqp - avg.avqp : 0,
+                'AVQ Relationnel': etabVals.avqr && avg.avqr ? etabVals.avqr - avg.avqr : 0,
+                'Actes CSARR': etabVals.csarr && avg.csarr ? etabVals.csarr - avg.csarr : 0
+            };
+
+            const positives = Object.entries(diffs).filter(([k, v]) => v < -0.1).map(([k, v]) => `<li>${k} plus faible que la moyenne (${v.toFixed(2)})</li>`);
+            const negatives = Object.entries(diffs).filter(([k, v]) => v > 0.1).map(([k, v]) => `<li>${k} plus élevé que la moyenne (+${v.toFixed(2)})</li>`);
+
+            summaryHtml = `
+                <div style="display: flex; gap: 2rem;">
+                    <div style="flex: 1;">
+                        <strong style="color:var(--text-light);">Différences notables (à la hausse)</strong>
+                        <ul style="padding-left: 1.2rem; margin-top: 0.5rem; color: #f87171;">${negatives.join('') || "<li>Aucune</li>"}</ul>
+                    </div>
+                    <div style="flex: 1;">
+                        <strong style="color:var(--text-light);">Différences notables (à la baisse)</strong>
+                        <ul style="padding-left: 1.2rem; margin-top: 0.5rem; color: #4ade80;">${positives.join('') || "<li>Aucune</li>"}</ul>
+                    </div>
+                </div>
+            `;
+        }
+        document.getElementById('detail-compare-summary').innerHTML = summaryHtml;
+
+        loader.style.display = 'none';
+        content.style.display = 'block';
+
+    } catch (err) {
+        console.error("Comparison Error:", err);
+        loader.style.display = 'none';
+        badge.textContent = "Erreur";
+    }
+}
+window.updateDetailComparison = updateDetailComparison;
+
+document.getElementById('detail-compare-scale').addEventListener('change', updateDetailComparison);
+document.getElementById('detail-compare-sector').addEventListener('change', updateDetailComparison);

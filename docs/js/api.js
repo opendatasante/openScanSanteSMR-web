@@ -39,6 +39,7 @@ export async function fetchInitialData() {
         jsonTotal.data.forEach(row => {
             const f = row.finess;
             if (state.mapping[f]) {
+                state.officialTotals[f] = row;
                 const statTotal = parseDaysAPI(row.nb_journees_total);
                 const statHc = parseDaysAPI(row.nb_journees_hc);
                 const statHp = parseDaysAPI(row.nb_journees_hp);
@@ -197,4 +198,47 @@ export async function fetchMapActivityData(selectedCms, selectedGns, selectedGme
     });
 
     return customData;
+}
+
+export async function fetchRowsForMedicalFilters(filters) {
+    let paths = [];
+    const cms = filters.selCms || [];
+    const gns = filters.selGns || [];
+    const gmes = filters.selGmes || [];
+
+    // On s'arrête toujours au niveau le plus détaillé sélectionné
+    state.optionsTree.forEach(cm => {
+        if (cms.length > 0 && !cms.includes(cm.value)) return;
+        if (gns.length === 0 && gmes.length === 0) {
+            paths.push(`${cm.value}`); return;
+        }
+        (cm.groupes_nosologiques || []).forEach(gn => {
+            if (gns.length > 0 && !gns.includes(gn.value)) return;
+            if (gmes.length === 0) {
+                paths.push(`${cm.value}/${gn.value}`); return;
+            }
+            (gn.groupes_medico_economiques || []).forEach(gme => {
+                if (gmes.length > 0 && !gmes.includes(gme.value)) return;
+                paths.push(`${cm.value}/${gn.value}/${gme.value}`);
+            });
+        });
+    });
+
+    const promises = paths.map(pathStr =>
+        fetch(`${config.cdnPrefix}data/restitutions/${pathStr}/latest.json`)
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null)
+    );
+
+    const results = await Promise.all(promises);
+    let allRows = [];
+    results.forEach(file => {
+        if (file && file.data) {
+            // Pour chaque ligne, on s'assure qu'elle n'est pas déjà présente ? 
+            // Vu qu'on tape dans `latest.json` pour chaque code sélectionné, on concat.
+            allRows = allRows.concat(file.data);
+        }
+    });
+
+    return allRows;
 }

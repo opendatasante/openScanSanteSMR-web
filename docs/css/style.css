@@ -1095,6 +1095,10 @@ footer.app-footer a:hover {
         grid-template-columns: 1fr;
     }
 
+    #detail-compare-content > div:first-child {
+        grid-template-columns: 1fr !important;
+    }
+
     #comparison-view h2 {
         font-size: 1.4rem;
     }
